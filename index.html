@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Numeros Ciegos</title>
+    <style>
+        #empezar{
+            height: 50px;
+            width: 100px;
+            border: 5px;
+            border-color: black;
+            border-radius: 10px;
+            background-color: yellow;
+            display: block;
+            margin-left: 40%;
+        }
+        #principal{
+            height: 700px;
+            width: 450px;
+            background-color: rgb(98, 84, 84);
+            margin-left: 1px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+        #cronometro{
+            color: aliceblue;
+            margin-left:40%;
+        }
+        .lista{
+            height: 40px;
+            width: 200px;
+            background-color: rgb(161, 177, 192);
+            
+            margin: 10px;
+            border-radius: 10px;
+            margin-left: 28%;
+        }
+        #tablas{
+            height: 510px;
+            background-color: gray;
+
+        }
+        .numeros{
+            margin-left: 45%;
+            margin-top: 5%;
+            color: rgb(106, 117, 128);
+        }
+        #numero{
+            height: 50px;
+            width: 200px;
+            background-color: rgb(255, 255, 255);
+            margin-left: 35%;
+            border-radius: 10px;
+            display: none;
+            
+        }
+        #aletorio{
+            margin-left: 10%;
+            margin-top: 5%;
+            color: rgb(2, 2, 2); 
+            
+        }
+        #perdiste{
+            margin-left: 5%;
+        }
+        #generarNumero{
+            height: 40px;
+            width: 150px;
+            background-color: rgb(45, 174, 213);
+            margin-left: 35%;
+            border-radius: 10px;
+            display: none;
+        }
+        #instrucciones{
+            height: 700px;
+            width: 450px;
+            background-color: rgb(229, 143, 143);
+            padding-top: 0%;
+            border-radius: 10px;
+            display: inline-block;
+            vertical-align: top;
+            
+        }
+        
+    </style>
+</head>
+<body style="background-color: aqua;">
+    <div>
+        <div id="instrucciones">
+            <h1>Numeros Ciegos</h1>
+            <p>
+                En <strong>numeros ciegos</strong> tienes que ordenar de menor a mayor numeros aleatorios siendo asi que en la posicion uno estara
+                el numero mas bajo y en la posicion diez tendra que estar el numero mas alto .
+            </p>
+            <p>
+                Cuando pone s un nuemro en una posicion despues no podras moverla osea que procura hacerte una buena estragia o perderas. Parara colocar un numero
+                tendras hacer click en la posicion en la que quieres poner el numero osea que si das al boton 6 colocaras en esa posicion el numero aleatorio.
+            </p>
+            <p>
+                Se te marcara en verde las posiciones donde puedes poner el numero. Para generar un numero aletorio tendras que dar a  el boton generar numero
+            </p>
+            <p>
+                para ganar tendras que poner los 10 numeros en cada una de las posiciones. Advertecia el juego es muy dificil de ganar porque solo tienes 
+                un minuto para poner los diez numeros solo un 2% de la gente gana. 
+            </p>
+            <h2>buena suerte porque la necesitaras</h2>
+            <h1 id="perdiste"></h1>
+        </div>
+        
+            
+        
+        <div id="principal">
+            <div>
+                <h1 id="cronometro"> </h1>
+            </div>
+            <div id="tablas">
+                <div id="1"class="lista">
+                    <h1 id="uno" class="numeros">1</h1>
+                </div>
+                <div id="2" class="lista">
+                    <h1 id="dos" class="numeros" >2</h1>
+                </div>
+                <div id="3" class="lista">
+                    <h1 id="tres" class="numeros" >3</h1>
+                </div>
+                <div id="4" class="lista">
+                    <h1 id="cuatro" class="numeros" >4</h1>
+                </div>
+                <div id="5" class="lista">
+                    <h1 id="cinco" class="numeros" >5</h1>
+                </div>
+                <div id="6" class="lista">
+                    <h1 id="seis" class="numeros" >6</h1>
+                </div>
+                
+                <div  id="7" class="lista">
+                    <h1 id="siete" class="numeros" >7</h1>
+                </div>
+               
+                <div id="8" class="lista">
+                    <h1 id="ocho" class="numeros" >8</h1>
+                </div>
+               
+                <div id="9" class="lista">
+                    <h1 id="nueve" class="numeros" >9</h1>
+                </div>
+                
+                <div id="10" class="lista">
+                    <h1 id="diez" class="numeros" >10</h1>
+                </div>
+                
+            </div>
+            <div>
+                <div id="numero">
+                    <h1 id="aleatorio"></h1>
+                </div>
+                <div id="generarNumero" onclick="generar()">
+                    <h3 id="TextoNumero">generar <br>numero</h3>
+                </div>
+                <div id="empezar" onclick="play()" >
+                    <img style="margin-left: 30%;" src="play.png" alt="play" height="40"  >
+                </div>
+                
+            </div>
+        
+        </div>
+    </div>
+    
+    <script>
+        let num=[0,0,0,0,0,0,0,0,0,0];
+         let numeroAletorio = 0;
+        window.onload=init;
+        function init(){
+            num=[0,0,0,0,0,0,0,0,0,0];
+          numeroAletorio = 0;
+            m = 1;
+            s = 0;
+            document.getElementById("cronometro").innerHTML="01:00";
+            
+        
+        }
+        function funcionAleatorio(){
+            document.getElementById("1").removeEventListener("click",unofuncion);
+            document.getElementById("2").removeEventListener("click",dosfuncion);
+            document.getElementById("3").removeEventListener("click",tresfuncion);
+            document.getElementById("4").removeEventListener("click",cuatrofuncion);
+            document.getElementById("5").removeEventListener("click",cincofuncion);
+            document.getElementById("6").removeEventListener("click",seisfuncion);
+            document.getElementById("7").removeEventListener("click",sietefuncion);
+            document.getElementById("8").removeEventListener("click",ochofuncion);
+            document.getElementById("9").removeEventListener("click",nuevefuncion);
+            document.getElementById("10").removeEventListener("click",diezfuncion);
+            let contador=0;
+            let guardado=0
+            let contadorGanar=0;
+            numeroAletorio=Math.ceil(Math.random()*1000);
+            document.getElementById("aleatorio").innerHTML=numeroAletorio;
+            for (let i = 0; i < 10; i++) {
+               
+                if (num[i]!=0) {
+                    contadorGanar++;
+                }
+                if (num[i]!=0 && num[i]>numeroAletorio) {
+                guardado=i;
+                break;
+               }
+                else{guardado=9}
+            }
+            
+               
+            for (let j = guardado; j > -1 ; j--) {
+                
+               if (num[j]!=0 && num[j]<numeroAletorio) {
+                
+                break;
+               }
+                else if(num[j]==0){
+                    verde(j);
+                    contador++;
+                }
+            
+            }
+            
+            if (contador==0) {
+                gameover();
+            }
+            if (contadorGanar==10) {
+                ganar();
+            } 
+
+        }
+        function ganar(){
+            clearInterval(id)
+            clearTimeout(miTo)
+            document.getElementById("perdiste").innerHTML="GANASTE!!!";
+            document.getElementById("perdiste").style.color="rgb(0, 255, 0)";
+            document.getElementById("empezar").style.display='block';
+            document.getElementById("numero").style.backgroundColor="rgb(0, 255, 0)";
+            init()
+        }
+        function generar(){
+            document.getElementById("numero").style.display="block";
+            document.getElementById("generarNumero").style.display="none";
+            document.getElementById("numero").style.backgroundColor="rgb(255, 255, 255)";
+            funcionAleatorio();
+        }
+        function verde(j) {
+            switch (j) {
+                        case 0:
+                        document.getElementById("1").addEventListener("click",unofuncion);
+                            break;
+                        case 1:
+                        document.getElementById("2").addEventListener("click",dosfuncion);
+                            break;
+                        case 2:
+                        document.getElementById("3").addEventListener("click",tresfuncion);
+                            break;
+                        case 3:
+                        document.getElementById("4").addEventListener("click",cuatrofuncion);
+                            break;
+                        case 4:
+                        document.getElementById("5").addEventListener("click",cincofuncion);
+                            break;
+                        case 5:
+                        document.getElementById("6").addEventListener("click",seisfuncion);
+                            break;
+                        case 6:
+                        document.getElementById("7").addEventListener("click",sietefuncion);
+                            break;
+                        case 7:
+                        document.getElementById("8").addEventListener("click",ochofuncion);
+                            break;
+                        case 8:
+                        document.getElementById("9").addEventListener("click",nuevefuncion);
+                            break;
+                        case 9:
+                        document.getElementById("10").addEventListener("click",diezfuncion);
+                            break;
+                        
+                    }
+                    document.getElementById([j+1].toString()).style.backgroundColor='rgb(0, 196, 0)';
+        }
+        function denegar(){
+            document.getElementById("1").removeEventListener("click",unofuncion);
+            document.getElementById("2").removeEventListener("click",dosfuncion);
+            document.getElementById("3").removeEventListener("click",tresfuncion);
+            document.getElementById("4").removeEventListener("click",cuatrofuncion);
+            document.getElementById("5").removeEventListener("click",cincofuncion);
+            document.getElementById("6").removeEventListener("click",seisfuncion);
+            document.getElementById("7").removeEventListener("click",sietefuncion);
+            document.getElementById("8").removeEventListener("click",ochofuncion);
+            document.getElementById("9").removeEventListener("click",nuevefuncion);
+            document.getElementById("10").removeEventListener("click",diezfuncion);
+        }
+        function funciones(){
+            funcionAleatorio();
+            document.getElementById("1").addEventListener("click",unofuncion);
+            document.getElementById("2").addEventListener("click",dosfuncion);
+            document.getElementById("3").addEventListener("click",tresfuncion);
+            document.getElementById("4").addEventListener("click",cuatrofuncion);
+            document.getElementById("5").addEventListener("click",cincofuncion);
+            document.getElementById("6").addEventListener("click",seisfuncion);
+            document.getElementById("7").addEventListener("click",sietefuncion);
+            document.getElementById("8").addEventListener("click",ochofuncion);
+            document.getElementById("9").addEventListener("click",nuevefuncion);
+            document.getElementById("10").addEventListener("click",diezfuncion);
+            document.getElementById("aleatorio").innerHTML=numeroAletorio;
+            document.getElementById("numero").style.display='block';
+        }
+        function play(){
+            recargar();
+            document.getElementById("perdiste").innerHTML="";
+            document.getElementById("numero").style.display="block";
+            document.getElementById("numero").style.backgroundColor="rgb(255, 255, 255)";
+            funciones();
+            tiempo();
+        }
+        function marcadores() {
+            for (let index = 0; index < 10; index++) {
+                if (num[index]==0) {
+                    document.getElementById((index+1).toString()).style.backgroundColor='rgb(161, 177, 192)'
+                }
+                
+            }
+        }
+        function unofuncion() {
+            if (num[0]==0) {
+                marcadores()
+                num[0] = numeroAletorio;
+                document.getElementById("uno").innerHTML=num[0];
+                document.getElementById("1").style.backgroundColor='rgb(255, 255, 255)';
+                document.getElementById("uno").style.color='rgb(0, 0, 0)';
+
+                document.getElementById("numero").style.display="none"
+                document.getElementById("generarNumero").style.display="block"
+                denegar();
+            }
+            
+            
+        }
+        function dosfuncion() {
+            if (num[1]==0) {
+                marcadores()
+                num[1] = numeroAletorio;
+                document.getElementById("dos").innerHTML=num[1];
+                document.getElementById("2").style.backgroundColor='rgb(255, 255, 255)';
+                document.getElementById("dos").style.color='rgb(0, 0, 0)';
+                document.getElementById("numero").style.display="none"
+                document.getElementById("generarNumero").style.display="block"
+                denegar();
+            }
+           
+            
+        }
+        function tresfuncion() {
+            if (num[2]==0) {
+                marcadores()
+                num[2] = numeroAletorio;
+                document.getElementById("tres").innerHTML=num[2];
+                document.getElementById("3").style.backgroundColor='rgb(255, 255, 255)';
+                document.getElementById("tres").style.color='rgb(0, 0, 0)';
+                document.getElementById("numero").style.display="none"
+                document.getElementById("generarNumero").style.display="block"
+                denegar();
+            }
+            
+            
+        }
+        function cuatrofuncion() {
+            if (num[3]==0) {
+                marcadores()
+                num[3] = numeroAletorio;
+                document.getElementById("cuatro").innerHTML=num[3];
+                document.getElementById("4").style.backgroundColor='rgb(255, 255, 255)';
+                document.getElementById("cuatro").style.color='rgb(0, 0, 0)';
+                document.getElementById("numero").style.display="none"
+                document.getElementById("generarNumero").style.display="block"
+                denegar();
+            }
+            
+            
+        }
+        function cincofuncion() {
+            if (num[4]==0) {
+                marcadores()
+                num[4] = numeroAletorio;
+                document.getElementById("cinco").innerHTML=num[4];
+                document.getElementById("5").style.backgroundColor='rgb(255, 255, 255)';
+                document.getElementById("cinco").style.color='rgb(0, 0, 0)';
+                document.getElementById("numero").style.display="none"
+                document.getElementById("generarNumero").style.display="block"
+                denegar();
+            }
+           
+           
+        }
+        function seisfuncion() {
+            if (num[5]==0) {
+                marcadores()
+                num[5] = numeroAletorio;
+                document.getElementById("seis").innerHTML=num[5];
+                document.getElementById("6").style.backgroundColor='rgb(255, 255, 255)';
+                document.getElementById("seis").style.color='rgb(0, 0, 0)';
+                document.getElementById("numero").style.display="none"
+                document.getElementById("generarNumero").style.display="block"
+                denegar();
+            }
+            
+            
+        }
+        function sietefuncion() {
+            if (num[6]==0) {
+                marcadores()
+                num[6] = numeroAletorio;
+                document.getElementById("siete").innerHTML=num[6];
+                document.getElementById("7").style.backgroundColor='rgb(255, 255, 255)';
+                document.getElementById("siete").style.color='rgb(0, 0, 0)';
+                document.getElementById("numero").style.display="none"
+                document.getElementById("generarNumero").style.display="block"
+                denegar();
+            }
+            
+            
+        }
+        function ochofuncion() {
+            if (num[7]==0) {
+                marcadores()
+                num[7] = numeroAletorio;
+                document.getElementById("ocho").innerHTML=num[7];
+                document.getElementById("8").style.backgroundColor='rgb(255, 255, 255)';
+                document.getElementById("ocho").style.color='rgb(0, 0, 0)';
+                document.getElementById("numero").style.display="none"
+                document.getElementById("generarNumero").style.display="block"
+                denegar();
+            }
+            
+            
+        }
+        function nuevefuncion() {
+            if (num[8]==0) {
+                marcadores()
+                num[8] = numeroAletorio;
+                document.getElementById("nueve").innerHTML=num[8];
+                document.getElementById("9").style.backgroundColor='rgb(255, 255, 255)';
+                document.getElementById("nueve").style.color='rgb(0, 0, 0)';
+                document.getElementById("numero").style.display="none"
+                document.getElementById("generarNumero").style.display="block"
+                denegar();
+            }
+            
+            
+        }
+        function diezfuncion() {
+            if (num[9]==0) {
+                marcadores()
+                num[9] = numeroAletorio;
+                document.getElementById("diez").innerHTML=num[9];
+                document.getElementById("10").style.backgroundColor='rgb(255, 255, 255)';
+                document.getElementById("diez").style.color='rgb(0, 0, 0)'; 
+                document.getElementById("numero").style.display="none"
+                document.getElementById("generarNumero").style.display="block"
+                denegar();
+            }
+           
+            
+        }
+        function tiempo(){
+            
+            escribir();
+            document.getElementById("empezar").style.display='none';
+            miTo=setTimeout(gameover, 60000);
+            id = setInterval(escribir,1000);
+            
+           
+
+        }
+        function escribir(){
+            var  minutos, segundos;
+            s--;
+            if (s<0){
+                m--;
+                s=59;
+            }
+            
+            
+
+            if (s<10){
+                segundos="0"+s;
+            }else{
+                segundos=s;
+            }
+
+            if (m<10){
+                minutos="0"+m;
+            }else{
+                minutos=m;
+            }
+            document.getElementById("cronometro").innerHTML =  minutos + ":" + segundos;
+        }
+        function recargar(){
+            document.getElementById("uno").innerHTML=1;
+            document.getElementById("dos").innerHTML=2;
+            document.getElementById("tres").innerHTML=3;
+            document.getElementById("cuatro").innerHTML=4;
+            document.getElementById("cinco").innerHTML=5;
+            document.getElementById("seis").innerHTML=6;
+            document.getElementById("siete").innerHTML=7;
+            document.getElementById("ocho").innerHTML=8;
+            document.getElementById("nueve").innerHTML=9;
+            document.getElementById("diez").innerHTML=10;
+            
+            
+            document.getElementById("1").removeEventListener("click",unofuncion);
+            document.getElementById("2").removeEventListener("click",dosfuncion);
+            document.getElementById("3").removeEventListener("click",tresfuncion);
+            document.getElementById("4").removeEventListener("click",cuatrofuncion);
+            document.getElementById("5").removeEventListener("click",cincofuncion);
+            document.getElementById("6").removeEventListener("click",seisfuncion);
+            document.getElementById("7").removeEventListener("click",sietefuncion);
+            document.getElementById("8").removeEventListener("click",ochofuncion);
+            document.getElementById("9").removeEventListener("click",nuevefuncion);
+            document.getElementById("10").removeEventListener("click",diezfuncion);
+            coloresIniciales();
+        }
+        function gameover() {
+            clearInterval(id)
+            clearTimeout(miTo)
+            document.getElementById("perdiste").innerHTML="perdiste suerte a la siguiente";
+            document.getElementById("perdiste").style.color="rgb(255,0,0)";
+            document.getElementById("empezar").style.display='block';
+            document.getElementById("numero").style.backgroundColor="rgb(255, 145, 145)";
+            init()
+            
+
+        }
+        function coloresIniciales() {
+            document.getElementById("1").style.backgroundColor='rgb(161, 177, 192)';
+            document.getElementById("2").style.backgroundColor='rgb(161, 177, 192)';
+            document.getElementById("3").style.backgroundColor='rgb(161, 177, 192)';
+            document.getElementById("4").style.backgroundColor='rgb(161, 177, 192)';
+            document.getElementById("5").style.backgroundColor='rgb(161, 177, 192)';
+            document.getElementById("6").style.backgroundColor='rgb(161, 177, 192)';
+            document.getElementById("7").style.backgroundColor='rgb(161, 177, 192)';
+            document.getElementById("8").style.backgroundColor='rgb(161, 177, 192)';
+            document.getElementById("9").style.backgroundColor='rgb(161, 177, 192)';
+            document.getElementById("10").style.backgroundColor='rgb(161, 177, 192)';
+            document.getElementById("uno").style.color='rgb(106, 117, 128)';
+            document.getElementById("dos").style.color='rgb(106, 117, 128)';
+            document.getElementById("tres").style.color='rgb(106, 117, 128)';
+            document.getElementById("cuatro").style.color='rgb(106, 117, 128)';
+            document.getElementById("cinco").style.color='rgb(106, 117, 128)';
+            document.getElementById("seis").style.color='rgb(106, 117, 128)';
+            document.getElementById("siete").style.color='rgb(106, 117, 128)';
+            document.getElementById("ocho").style.color='rgb(106, 117, 128)';
+            document.getElementById("nueve").style.color='rgb(106, 117, 128)';
+            document.getElementById("diez").style.color='rgb(106, 117, 128)';
+        }
+    </script>
+</body>
+</html>
