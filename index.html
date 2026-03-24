@@ -1,562 +1,765 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Numeros Ciegos</title>
-    <style>
-        #empezar{
-            height: 50px;
-            width: 100px;
-            border: 5px;
-            border-color: black;
-            border-radius: 10px;
-            background-color: yellow;
-            display: block;
-            margin-left: 40%;
-        }
-        #principal{
-            height: 700px;
-            width: 450px;
-            background-color: rgb(98, 84, 84);
-            margin-left: 1px;
-            border-radius: 10px;
-            display: inline-block;
-        }
-        #cronometro{
-            color: aliceblue;
-            margin-left:40%;
-        }
-        .lista{
-            height: 40px;
-            width: 200px;
-            background-color: rgb(161, 177, 192);
-            
-            margin: 10px;
-            border-radius: 10px;
-            margin-left: 28%;
-        }
-        #tablas{
-            height: 510px;
-            background-color: gray;
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Números Ciegos: Roguelike</title>
+  <style>
+    :root{
+      --bg: #00d6ff;
+      --panel: #1f1f1f;
+      --panel2:#2a2a2a;
+      --slot:#a1b1c0;
+      --slotText:#6a7580;
+      --ok:#00c400;
+      --placed:#ffffff;
+      --danger:#ff9191;
+      --accent:#ffe600;
+    }
+    *{ box-sizing: border-box; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    body{ margin:0; background: var(--bg); display:flex; justify-content:center; padding:16px; }
+    .wrap{ width:min(980px, 100%); display:grid; gap:16px; grid-template-columns: 1fr 1fr; }
 
-        }
-        .numeros{
-            margin-left: 45%;
-            margin-top: 5%;
-            color: rgb(106, 117, 128);
-        }
-        #numero{
-            height: 50px;
-            width: 200px;
-            background-color: rgb(255, 255, 255);
-            margin-left: 35%;
-            border-radius: 10px;
-            display: none;
-            
-        }
-        #aletorio{
-            margin-left: 10%;
-            margin-top: 5%;
-            color: rgb(2, 2, 2); 
-            
-        }
-        #perdiste{
-            margin-left: 5%;
-        }
-        #generarNumero{
-            height: 40px;
-            width: 150px;
-            background-color: rgb(45, 174, 213);
-            margin-left: 35%;
-            border-radius: 10px;
-            display: none;
-        }
-        #instrucciones{
-            height: 700px;
-            width: 450px;
-            background-color: rgb(229, 143, 143);
-            padding-top: 0%;
-            border-radius: 10px;
-            display: inline-block;
-            vertical-align: top;
-            
-        }
-        
-    </style>
+    .card{
+      background: rgba(255,255,255,0.85);
+      border-radius: 14px;
+      padding: 14px 14px;
+      box-shadow: 0 8px 22px rgba(0,0,0,.12);
+    }
+
+    #instrucciones{ background: rgba(255, 206, 206, 0.92); }
+    #instrucciones h1{ margin:0 0 10px; }
+    #instrucciones p{ margin: 8px 0; line-height: 1.35; }
+    #msg{ margin-top:10px; font-weight:700; }
+
+    #game{ background: rgba(255,255,255,0.9); }
+    .topbar{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      background: var(--panel2);
+      color:#fff;
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+    }
+    .topbar .stat{ font-size: 14px; opacity: .95; }
+    .topbar .stat b{ font-size: 16px; }
+
+    #tablero{
+      background: #777;
+      border-radius: 12px;
+      padding: 10px;
+      min-height: 520px;
+    }
+    .slot{
+      height: 44px;
+      border-radius: 12px;
+      background: var(--slot);
+      margin: 10px auto;
+      width: min(340px, 100%);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      user-select:none;
+      transition: transform .03s ease, filter .12s ease, background-color .12s ease;
+    }
+    .slot:active{ transform: scale(0.995); }
+    .slot .num{
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--slotText);
+    }
+
+    .controls{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .box{
+      border-radius: 12px;
+      padding: 10px;
+      background: rgba(0,0,0,0.06);
+    }
+
+    .currentRow{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+    }
+
+    #currentToken{
+      flex: 1;
+      border-radius: 12px;
+      background: #fff;
+      border: 2px solid rgba(0,0,0,.08);
+      padding: 10px 12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      min-height: 48px;
+    }
+    #currentValue{
+      font-size: 22px;
+      font-weight: 900;
+    }
+    #currentType{
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    .btnRow{ display:flex; gap:10px; margin-top: 10px; }
+    button{
+      border: none;
+      border-radius: 12px;
+      padding: 10px 12px;
+      cursor:pointer;
+      font-weight: 900;
+      transition: filter .12s ease, transform .03s ease;
+    }
+    button:active{ transform: scale(0.995); }
+    button:hover{ filter: brightness(0.98); }
+    button:disabled{ opacity: .5; cursor:not-allowed; }
+
+    #btnStart{ background: var(--accent); }
+    #btnStore{ background: #44d0ff; }
+    #btnUseCurrent{ background: #e9e9e9; }
+
+    .storedTitle{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom: 8px; }
+    .storedGrid{ display:grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .stored{
+      background: #fff;
+      border-radius: 12px;
+      border: 2px solid rgba(0,0,0,.08);
+      padding: 10px 8px;
+      text-align:center;
+      cursor:pointer;
+      user-select:none;
+      min-height: 52px;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      gap:4px;
+    }
+    .stored .v{ font-weight: 1000; font-size: 18px; }
+    .stored .t{ font-weight: 900; font-size: 14px; opacity: .9; }
+    .stored.selected{ outline: 3px solid rgba(0, 140, 255, .6); }
+
+    .hint{
+      font-size: 12px;
+      opacity: .8;
+      margin-top: 8px;
+      line-height: 1.25;
+    }
+
+    .tag{
+      display:inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 900;
+      background: rgba(255,255,255,.16);
+      margin-left: 6px;
+    }
+  </style>
 </head>
-<body style="background-color: aqua;">
-    <div>
-        <div id="instrucciones">
-            <h1>Numeros Ciegos</h1>
-            <p>
-                En <strong>numeros ciegos</strong> tienes que ordenar de menor a mayor numeros aleatorios siendo asi que en la posicion uno estara
-                el numero mas bajo y en la posicion diez tendra que estar el numero mas alto .
-            </p>
-            <p>
-                Cuando pone s un nuemro en una posicion despues no podras moverla osea que procura hacerte una buena estragia o perderas. Parara colocar un numero
-                tendras hacer click en la posicion en la que quieres poner el numero osea que si das al boton 6 colocaras en esa posicion el numero aleatorio.
-            </p>
-            <p>
-                Se te marcara en verde las posiciones donde puedes poner el numero. Para generar un numero aletorio tendras que dar a  el boton generar numero
-            </p>
-            <p>
-                para ganar tendras que poner los 10 numeros en cada una de las posiciones. Advertecia el juego es muy dificil de ganar porque solo tienes 
-                un minuto para poner los diez numeros solo un 2% de la gente gana. 
-            </p>
-            <h2>buena suerte porque la necesitaras</h2>
-            <h1 id="perdiste"></h1>
-        </div>
-        
-            
-        
-        <div id="principal">
-            <div>
-                <h1 id="cronometro"> </h1>
-            </div>
-            <div id="tablas">
-                <div id="1"class="lista">
-                    <h1 id="uno" class="numeros">1</h1>
-                </div>
-                <div id="2" class="lista">
-                    <h1 id="dos" class="numeros" >2</h1>
-                </div>
-                <div id="3" class="lista">
-                    <h1 id="tres" class="numeros" >3</h1>
-                </div>
-                <div id="4" class="lista">
-                    <h1 id="cuatro" class="numeros" >4</h1>
-                </div>
-                <div id="5" class="lista">
-                    <h1 id="cinco" class="numeros" >5</h1>
-                </div>
-                <div id="6" class="lista">
-                    <h1 id="seis" class="numeros" >6</h1>
-                </div>
-                
-                <div  id="7" class="lista">
-                    <h1 id="siete" class="numeros" >7</h1>
-                </div>
-               
-                <div id="8" class="lista">
-                    <h1 id="ocho" class="numeros" >8</h1>
-                </div>
-               
-                <div id="9" class="lista">
-                    <h1 id="nueve" class="numeros" >9</h1>
-                </div>
-                
-                <div id="10" class="lista">
-                    <h1 id="diez" class="numeros" >10</h1>
-                </div>
-                
-            </div>
-            <div>
-                <div id="numero">
-                    <h1 id="aleatorio"></h1>
-                </div>
-                <div id="generarNumero" onclick="generar()">
-                    <h3 id="TextoNumero">generar <br>numero</h3>
-                </div>
-                <div id="empezar" onclick="play()" >
-                    <img style="margin-left: 30%;" src="play.png" alt="play" height="40"  >
-                </div>
-                
-            </div>
-        
-        </div>
+
+<body>
+  <div class="wrap">
+    <div id="instrucciones" class="card">
+      <h1>Números Ciegos (Roguelike)</h1>
+      <p>
+        Objetivo: ordenar de menor a mayor colocando números en las casillas.
+        El juego marca en <b style="color:#007c00">verde</b> dónde puedes colocar el número actual.
+      </p>
+      <p>
+        <b>Nuevo:</b> puedes <b>guardar hasta 3 números</b> para usarlos más tarde.
+        También hay <b>números especiales</b>:
+      </p>
+      <p>
+        🟩 <b>Número Verde</b>: al colocarlo, intenta <b>autollenar la casilla anterior</b> con un número menor válido.
+      </p>
+      <p>
+        Cada piso (nivel) empieza fácil: menos casillas y rango pequeño. Si completas un piso, pasas al siguiente.
+      </p>
+      <div id="msg"></div>
+      <div class="hint">
+        Tip: Si un número no tiene hueco, prueba a guardarlo o usa un guardado que sí encaje.
+      </div>
     </div>
-    
-    <script>
-        let num=[0,0,0,0,0,0,0,0,0,0];
-         let numeroAletorio = 0;
-        window.onload=init;
-        function init(){
-            num=[0,0,0,0,0,0,0,0,0,0];
-          numeroAletorio = 0;
-            m = 1;
-            s = 0;
-            document.getElementById("cronometro").innerHTML="01:00";
-            
-        
-        }
-        function funcionAleatorio(){
-            document.getElementById("1").removeEventListener("click",unofuncion);
-            document.getElementById("2").removeEventListener("click",dosfuncion);
-            document.getElementById("3").removeEventListener("click",tresfuncion);
-            document.getElementById("4").removeEventListener("click",cuatrofuncion);
-            document.getElementById("5").removeEventListener("click",cincofuncion);
-            document.getElementById("6").removeEventListener("click",seisfuncion);
-            document.getElementById("7").removeEventListener("click",sietefuncion);
-            document.getElementById("8").removeEventListener("click",ochofuncion);
-            document.getElementById("9").removeEventListener("click",nuevefuncion);
-            document.getElementById("10").removeEventListener("click",diezfuncion);
-            let contador=0;
-            let guardado=0
-            let contadorGanar=0;
-            numeroAletorio=Math.ceil(Math.random()*1000);
-            document.getElementById("aleatorio").innerHTML=numeroAletorio;
-            for (let i = 0; i < 10; i++) {
-               
-                if (num[i]!=0) {
-                    contadorGanar++;
-                }
-                if (num[i]!=0 && num[i]>numeroAletorio) {
-                guardado=i;
-                break;
-               }
-                else{guardado=9}
-            }
-            
-               
-            for (let j = guardado; j > -1 ; j--) {
-                
-               if (num[j]!=0 && num[j]<numeroAletorio) {
-                
-                break;
-               }
-                else if(num[j]==0){
-                    verde(j);
-                    contador++;
-                }
-            
-            }
-            
-            if (contador==0) {
-                gameover();
-            }
-            if (contadorGanar==10) {
-                ganar();
-            } 
 
-        }
-        function ganar(){
-            clearInterval(id)
-            clearTimeout(miTo)
-            document.getElementById("perdiste").innerHTML="GANASTE!!!";
-            document.getElementById("perdiste").style.color="rgb(0, 255, 0)";
-            document.getElementById("empezar").style.display='block';
-            document.getElementById("numero").style.backgroundColor="rgb(0, 255, 0)";
-            init()
-        }
-        function generar(){
-            document.getElementById("numero").style.display="block";
-            document.getElementById("generarNumero").style.display="none";
-            document.getElementById("numero").style.backgroundColor="rgb(255, 255, 255)";
-            funcionAleatorio();
-        }
-        function verde(j) {
-            switch (j) {
-                        case 0:
-                        document.getElementById("1").addEventListener("click",unofuncion);
-                            break;
-                        case 1:
-                        document.getElementById("2").addEventListener("click",dosfuncion);
-                            break;
-                        case 2:
-                        document.getElementById("3").addEventListener("click",tresfuncion);
-                            break;
-                        case 3:
-                        document.getElementById("4").addEventListener("click",cuatrofuncion);
-                            break;
-                        case 4:
-                        document.getElementById("5").addEventListener("click",cincofuncion);
-                            break;
-                        case 5:
-                        document.getElementById("6").addEventListener("click",seisfuncion);
-                            break;
-                        case 6:
-                        document.getElementById("7").addEventListener("click",sietefuncion);
-                            break;
-                        case 7:
-                        document.getElementById("8").addEventListener("click",ochofuncion);
-                            break;
-                        case 8:
-                        document.getElementById("9").addEventListener("click",nuevefuncion);
-                            break;
-                        case 9:
-                        document.getElementById("10").addEventListener("click",diezfuncion);
-                            break;
-                        
-                    }
-                    document.getElementById([j+1].toString()).style.backgroundColor='rgb(0, 196, 0)';
-        }
-        function denegar(){
-            document.getElementById("1").removeEventListener("click",unofuncion);
-            document.getElementById("2").removeEventListener("click",dosfuncion);
-            document.getElementById("3").removeEventListener("click",tresfuncion);
-            document.getElementById("4").removeEventListener("click",cuatrofuncion);
-            document.getElementById("5").removeEventListener("click",cincofuncion);
-            document.getElementById("6").removeEventListener("click",seisfuncion);
-            document.getElementById("7").removeEventListener("click",sietefuncion);
-            document.getElementById("8").removeEventListener("click",ochofuncion);
-            document.getElementById("9").removeEventListener("click",nuevefuncion);
-            document.getElementById("10").removeEventListener("click",diezfuncion);
-        }
-        function funciones(){
-            funcionAleatorio();
-            document.getElementById("1").addEventListener("click",unofuncion);
-            document.getElementById("2").addEventListener("click",dosfuncion);
-            document.getElementById("3").addEventListener("click",tresfuncion);
-            document.getElementById("4").addEventListener("click",cuatrofuncion);
-            document.getElementById("5").addEventListener("click",cincofuncion);
-            document.getElementById("6").addEventListener("click",seisfuncion);
-            document.getElementById("7").addEventListener("click",sietefuncion);
-            document.getElementById("8").addEventListener("click",ochofuncion);
-            document.getElementById("9").addEventListener("click",nuevefuncion);
-            document.getElementById("10").addEventListener("click",diezfuncion);
-            document.getElementById("aleatorio").innerHTML=numeroAletorio;
-            document.getElementById("numero").style.display='block';
-        }
-        function play(){
-            recargar();
-            document.getElementById("perdiste").innerHTML="";
-            document.getElementById("numero").style.display="block";
-            document.getElementById("numero").style.backgroundColor="rgb(255, 255, 255)";
-            funciones();
-            tiempo();
-        }
-        function marcadores() {
-            for (let index = 0; index < 10; index++) {
-                if (num[index]==0) {
-                    document.getElementById((index+1).toString()).style.backgroundColor='rgb(161, 177, 192)'
-                }
-                
-            }
-        }
-        function unofuncion() {
-            if (num[0]==0) {
-                marcadores()
-                num[0] = numeroAletorio;
-                document.getElementById("uno").innerHTML=num[0];
-                document.getElementById("1").style.backgroundColor='rgb(255, 255, 255)';
-                document.getElementById("uno").style.color='rgb(0, 0, 0)';
+    <div id="game" class="card">
+      <div class="topbar">
+        <div class="stat">Piso: <b id="uiFloor">1</b></div>
+        <div class="stat">Rango: <b id="uiRange">1–30</b></div>
+        <div class="stat">Tiempo: <b id="uiTime">01:30</b></div>
+      </div>
 
-                document.getElementById("numero").style.display="none"
-                document.getElementById("generarNumero").style.display="block"
-                denegar();
-            }
-            
-            
-        }
-        function dosfuncion() {
-            if (num[1]==0) {
-                marcadores()
-                num[1] = numeroAletorio;
-                document.getElementById("dos").innerHTML=num[1];
-                document.getElementById("2").style.backgroundColor='rgb(255, 255, 255)';
-                document.getElementById("dos").style.color='rgb(0, 0, 0)';
-                document.getElementById("numero").style.display="none"
-                document.getElementById("generarNumero").style.display="block"
-                denegar();
-            }
-           
-            
-        }
-        function tresfuncion() {
-            if (num[2]==0) {
-                marcadores()
-                num[2] = numeroAletorio;
-                document.getElementById("tres").innerHTML=num[2];
-                document.getElementById("3").style.backgroundColor='rgb(255, 255, 255)';
-                document.getElementById("tres").style.color='rgb(0, 0, 0)';
-                document.getElementById("numero").style.display="none"
-                document.getElementById("generarNumero").style.display="block"
-                denegar();
-            }
-            
-            
-        }
-        function cuatrofuncion() {
-            if (num[3]==0) {
-                marcadores()
-                num[3] = numeroAletorio;
-                document.getElementById("cuatro").innerHTML=num[3];
-                document.getElementById("4").style.backgroundColor='rgb(255, 255, 255)';
-                document.getElementById("cuatro").style.color='rgb(0, 0, 0)';
-                document.getElementById("numero").style.display="none"
-                document.getElementById("generarNumero").style.display="block"
-                denegar();
-            }
-            
-            
-        }
-        function cincofuncion() {
-            if (num[4]==0) {
-                marcadores()
-                num[4] = numeroAletorio;
-                document.getElementById("cinco").innerHTML=num[4];
-                document.getElementById("5").style.backgroundColor='rgb(255, 255, 255)';
-                document.getElementById("cinco").style.color='rgb(0, 0, 0)';
-                document.getElementById("numero").style.display="none"
-                document.getElementById("generarNumero").style.display="block"
-                denegar();
-            }
-           
-           
-        }
-        function seisfuncion() {
-            if (num[5]==0) {
-                marcadores()
-                num[5] = numeroAletorio;
-                document.getElementById("seis").innerHTML=num[5];
-                document.getElementById("6").style.backgroundColor='rgb(255, 255, 255)';
-                document.getElementById("seis").style.color='rgb(0, 0, 0)';
-                document.getElementById("numero").style.display="none"
-                document.getElementById("generarNumero").style.display="block"
-                denegar();
-            }
-            
-            
-        }
-        function sietefuncion() {
-            if (num[6]==0) {
-                marcadores()
-                num[6] = numeroAletorio;
-                document.getElementById("siete").innerHTML=num[6];
-                document.getElementById("7").style.backgroundColor='rgb(255, 255, 255)';
-                document.getElementById("siete").style.color='rgb(0, 0, 0)';
-                document.getElementById("numero").style.display="none"
-                document.getElementById("generarNumero").style.display="block"
-                denegar();
-            }
-            
-            
-        }
-        function ochofuncion() {
-            if (num[7]==0) {
-                marcadores()
-                num[7] = numeroAletorio;
-                document.getElementById("ocho").innerHTML=num[7];
-                document.getElementById("8").style.backgroundColor='rgb(255, 255, 255)';
-                document.getElementById("ocho").style.color='rgb(0, 0, 0)';
-                document.getElementById("numero").style.display="none"
-                document.getElementById("generarNumero").style.display="block"
-                denegar();
-            }
-            
-            
-        }
-        function nuevefuncion() {
-            if (num[8]==0) {
-                marcadores()
-                num[8] = numeroAletorio;
-                document.getElementById("nueve").innerHTML=num[8];
-                document.getElementById("9").style.backgroundColor='rgb(255, 255, 255)';
-                document.getElementById("nueve").style.color='rgb(0, 0, 0)';
-                document.getElementById("numero").style.display="none"
-                document.getElementById("generarNumero").style.display="block"
-                denegar();
-            }
-            
-            
-        }
-        function diezfuncion() {
-            if (num[9]==0) {
-                marcadores()
-                num[9] = numeroAletorio;
-                document.getElementById("diez").innerHTML=num[9];
-                document.getElementById("10").style.backgroundColor='rgb(255, 255, 255)';
-                document.getElementById("diez").style.color='rgb(0, 0, 0)'; 
-                document.getElementById("numero").style.display="none"
-                document.getElementById("generarNumero").style.display="block"
-                denegar();
-            }
-           
-            
-        }
-        function tiempo(){
-            
-            escribir();
-            document.getElementById("empezar").style.display='none';
-            miTo=setTimeout(gameover, 60000);
-            id = setInterval(escribir,1000);
-            
-           
+      <div id="tablero"></div>
 
-        }
-        function escribir(){
-            var  minutos, segundos;
-            s--;
-            if (s<0){
-                m--;
-                s=59;
-            }
-            
-            
+      <div class="controls">
+        <div class="box">
+          <div class="currentRow">
+            <div id="currentToken" aria-live="polite">
+              <div>
+                <div style="font-size:12px; opacity:.7; font-weight:800;">Número actual</div>
+                <div id="currentValue">—</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:12px; opacity:.7; font-weight:800;">Tipo</div>
+                <div id="currentType">—</div>
+              </div>
+            </div>
+          </div>
 
-            if (s<10){
-                segundos="0"+s;
-            }else{
-                segundos=s;
-            }
+          <div class="btnRow">
+            <button id="btnStart">▶ Empezar run</button>
+            <button id="btnStore" disabled>Guardar (0/3)</button>
+          </div>
 
-            if (m<10){
-                minutos="0"+m;
-            }else{
-                minutos=m;
-            }
-            document.getElementById("cronometro").innerHTML =  minutos + ":" + segundos;
-        }
-        function recargar(){
-            document.getElementById("uno").innerHTML=1;
-            document.getElementById("dos").innerHTML=2;
-            document.getElementById("tres").innerHTML=3;
-            document.getElementById("cuatro").innerHTML=4;
-            document.getElementById("cinco").innerHTML=5;
-            document.getElementById("seis").innerHTML=6;
-            document.getElementById("siete").innerHTML=7;
-            document.getElementById("ocho").innerHTML=8;
-            document.getElementById("nueve").innerHTML=9;
-            document.getElementById("diez").innerHTML=10;
-            
-            
-            document.getElementById("1").removeEventListener("click",unofuncion);
-            document.getElementById("2").removeEventListener("click",dosfuncion);
-            document.getElementById("3").removeEventListener("click",tresfuncion);
-            document.getElementById("4").removeEventListener("click",cuatrofuncion);
-            document.getElementById("5").removeEventListener("click",cincofuncion);
-            document.getElementById("6").removeEventListener("click",seisfuncion);
-            document.getElementById("7").removeEventListener("click",sietefuncion);
-            document.getElementById("8").removeEventListener("click",ochofuncion);
-            document.getElementById("9").removeEventListener("click",nuevefuncion);
-            document.getElementById("10").removeEventListener("click",diezfuncion);
-            coloresIniciales();
-        }
-        function gameover() {
-            clearInterval(id)
-            clearTimeout(miTo)
-            document.getElementById("perdiste").innerHTML="perdiste suerte a la siguiente";
-            document.getElementById("perdiste").style.color="rgb(255,0,0)";
-            document.getElementById("empezar").style.display='block';
-            document.getElementById("numero").style.backgroundColor="rgb(255, 145, 145)";
-            init()
-            
+          <div class="hint">
+            🟩 Verde autollenará la casilla anterior si puede.<br/>
+            Si seleccionas un guardado, se usa como número actual hasta que lo coloques.
+          </div>
+        </div>
 
+        <div class="box">
+          <div class="storedTitle">
+            <div style="font-weight:1000;">Guardados</div>
+            <div class="tag" id="uiStoredTag">0/3</div>
+          </div>
+          <div class="storedGrid">
+            <div class="stored" id="stored0"><div class="v">—</div><div class="t">Vacío</div></div>
+            <div class="stored" id="stored1"><div class="v">—</div><div class="t">Vacío</div></div>
+            <div class="stored" id="stored2"><div class="v">—</div><div class="t">Vacío</div></div>
+          </div>
+          <div class="hint">
+            Click en un guardado para seleccionarlo. Click de nuevo para deseleccionar.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================
+    // Estado del juego
+    // =========================
+    const TokenType = {
+      Normal: "Normal",
+      Verde: "Verde",
+    };
+
+    const state = {
+      floor: 1,
+      size: 5,
+      min: 1,
+      max: 30,
+      timeLeft: 90,
+      timerId: null,
+
+      slots: [], // null => vacío, number => colocado
+      current: null, // { value, type }
+      stored: [], // hasta 3 tokens {value,type}
+      selectedStoredIndex: -1, // si estás usando un guardado
+
+      softRerollUsed: false, // ayuda suave por piso si sale número imposible
+      running: false,
+    };
+
+    // Config de pisos (primeros fáciles)
+    const floorConfigs = [
+      { size: 5,  min: 1, max: 30,  time: 90 },
+      { size: 6,  min: 1, max: 50,  time: 80 },
+      { size: 7,  min: 1, max: 80,  time: 75 },
+      { size: 8,  min: 1, max: 120, time: 70 },
+      { size: 9,  min: 1, max: 180, time: 65 },
+      { size: 10, min: 1, max: 250, time: 60 },
+    ];
+
+    // =========================
+    // DOM refs
+    // =========================
+    const tableroEl = document.getElementById("tablero");
+    const msgEl = document.getElementById("msg");
+
+    const uiFloor = document.getElementById("uiFloor");
+    const uiRange = document.getElementById("uiRange");
+    const uiTime  = document.getElementById("uiTime");
+
+    const currentValueEl = document.getElementById("currentValue");
+    const currentTypeEl  = document.getElementById("currentType");
+
+    const btnStart = document.getElementById("btnStart");
+    const btnStore = document.getElementById("btnStore");
+
+    const storedEls = [
+      document.getElementById("stored0"),
+      document.getElementById("stored1"),
+      document.getElementById("stored2"),
+    ];
+    const uiStoredTag = document.getElementById("uiStoredTag");
+
+    // =========================
+    // Utilidades
+    // =========================
+    function randInt(a, b){
+      return Math.floor(Math.random() * (b - a + 1)) + a;
+    }
+
+    function formatTime(sec){
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return String(m).padStart(2,"0") + ":" + String(s).padStart(2,"0");
+    }
+
+    function setMsg(text, color){
+      msgEl.textContent = text || "";
+      msgEl.style.color = color || "#111";
+    }
+
+    function tokenEmoji(type){
+      if (type === TokenType.Verde) return "🟩";
+      return "⬜";
+    }
+
+    function tokenColor(type){
+      if (type === TokenType.Verde) return "rgb(0, 196, 0)";
+      return "#fff";
+    }
+
+    // =========================
+    // Tablero (UI)
+    // =========================
+    function buildBoard(){
+      tableroEl.innerHTML = "";
+      // creamos SIEMPRE 10 slots, y ocultamos los que no se usan en el piso
+      for (let i=0;i<10;i++){
+        const div = document.createElement("div");
+        div.className = "slot";
+        div.dataset.idx = String(i);
+
+        const h = document.createElement("div");
+        h.className = "num";
+        h.textContent = String(i+1);
+
+        div.appendChild(h);
+        div.addEventListener("click", () => onSlotClick(i));
+        tableroEl.appendChild(div);
+      }
+    }
+
+    function paintBoard(){
+      const slotDivs = [...document.querySelectorAll(".slot")];
+
+      // mostrar/ocultar según tamaño del piso
+      slotDivs.forEach((el, i) => {
+        el.style.display = (i < state.size) ? "flex" : "none";
+      });
+
+      // pintar números y colores
+      for (let i=0;i<state.size;i++){
+        const el = slotDivs[i];
+        const numEl = el.querySelector(".num");
+        const v = state.slots[i];
+
+        if (v == null){
+          numEl.textContent = String(i+1);
+          numEl.style.color = "var(--slotText)";
+          el.style.backgroundColor = "var(--slot)";
+        } else {
+          numEl.textContent = String(v);
+          numEl.style.color = "rgb(0,0,0)";
+          el.style.backgroundColor = "var(--placed)";
         }
-        function coloresIniciales() {
-            document.getElementById("1").style.backgroundColor='rgb(161, 177, 192)';
-            document.getElementById("2").style.backgroundColor='rgb(161, 177, 192)';
-            document.getElementById("3").style.backgroundColor='rgb(161, 177, 192)';
-            document.getElementById("4").style.backgroundColor='rgb(161, 177, 192)';
-            document.getElementById("5").style.backgroundColor='rgb(161, 177, 192)';
-            document.getElementById("6").style.backgroundColor='rgb(161, 177, 192)';
-            document.getElementById("7").style.backgroundColor='rgb(161, 177, 192)';
-            document.getElementById("8").style.backgroundColor='rgb(161, 177, 192)';
-            document.getElementById("9").style.backgroundColor='rgb(161, 177, 192)';
-            document.getElementById("10").style.backgroundColor='rgb(161, 177, 192)';
-            document.getElementById("uno").style.color='rgb(106, 117, 128)';
-            document.getElementById("dos").style.color='rgb(106, 117, 128)';
-            document.getElementById("tres").style.color='rgb(106, 117, 128)';
-            document.getElementById("cuatro").style.color='rgb(106, 117, 128)';
-            document.getElementById("cinco").style.color='rgb(106, 117, 128)';
-            document.getElementById("seis").style.color='rgb(106, 117, 128)';
-            document.getElementById("siete").style.color='rgb(106, 117, 128)';
-            document.getElementById("ocho").style.color='rgb(106, 117, 128)';
-            document.getElementById("nueve").style.color='rgb(106, 117, 128)';
-            document.getElementById("diez").style.color='rgb(106, 117, 128)';
+      }
+    }
+
+    function clearHighlights(){
+      const slotDivs = [...document.querySelectorAll(".slot")];
+      for (let i=0;i<state.size;i++){
+        if (state.slots[i] == null){
+          slotDivs[i].style.backgroundColor = "var(--slot)";
         }
-    </script>
+      }
+    }
+
+    function highlightValid(indices){
+      clearHighlights();
+      const slotDivs = [...document.querySelectorAll(".slot")];
+      indices.forEach(i => {
+        if (i >= 0 && i < state.size && state.slots[i] == null){
+          slotDivs[i].style.backgroundColor = "var(--ok)";
+        }
+      });
+    }
+
+    // =========================
+    // Reglas de colocación (adaptación de tu lógica)
+    // =========================
+    function getValidIndices(value){
+      // guardado = primera casilla ocupada con número > value; si no, el final
+      let guardado = state.size - 1;
+
+      for (let i=0;i<state.size;i++){
+        const v = state.slots[i];
+        if (v != null && v > value){
+          guardado = i;
+          break;
+        }
+      }
+
+      const valid = [];
+      for (let j=guardado; j>=0; j--){
+        const v = state.slots[j];
+        if (v != null && v < value) break;
+        if (v == null) valid.push(j);
+      }
+      return valid;
+    }
+
+    function canPlace(idx, value){
+      if (idx < 0 || idx >= state.size) return false;
+      if (state.slots[idx] != null) return false;
+      return getValidIndices(value).includes(idx);
+    }
+
+    // Para el verde: autollenar idx-1 con algo menor válido
+    function tryAutoFillSmaller(targetIdx, upperExclusive){
+      if (targetIdx < 0 || targetIdx >= state.size) return false;
+      if (state.slots[targetIdx] != null) return false;
+
+      // Min válido: (último ocupado antes del target) + 1, o min del piso
+      let min = state.min;
+      for (let i = targetIdx - 1; i >= 0; i--){
+        if (state.slots[i] != null){
+          min = Math.max(min, state.slots[i] + 1);
+          break;
+        }
+      }
+
+      const max = Math.min(state.max, upperExclusive - 1);
+      if (min > max) return false;
+
+      // intentos aleatorios
+      for (let t=0; t<20; t++){
+        const candidate = randInt(min, max);
+        if (canPlace(targetIdx, candidate)){
+          state.slots[targetIdx] = candidate;
+          return true;
+        }
+      }
+
+      // último intento determinista (por si el azar falla)
+      if (canPlace(targetIdx, min)){
+        state.slots[targetIdx] = min;
+        return true;
+      }
+      if (canPlace(targetIdx, max)){
+        state.slots[targetIdx] = max;
+        return true;
+      }
+      return false;
+    }
+
+    // =========================
+    // Números / tokens
+    // =========================
+    function rollToken(){
+      // 12% verde (ajusta a gusto)
+      const r = randInt(1, 100);
+      const type = (r <= 12) ? TokenType.Verde : TokenType.Normal;
+      const value = randInt(state.min, state.max);
+      state.current = { value, type };
+      state.selectedStoredIndex = -1; // al generar nuevo número, deselecciona guardado
+
+      paintCurrentToken();
+      updateStoreUI();
+      afterTokenChanged();
+    }
+
+    function paintCurrentToken(){
+      if (!state.current){
+        currentValueEl.textContent = "—";
+        currentTypeEl.textContent  = "—";
+        return;
+      }
+      currentValueEl.textContent = String(state.current.value);
+      currentTypeEl.textContent  = `${tokenEmoji(state.current.type)} ${state.current.type}`;
+
+      // colorear ligeramente el "token actual"
+      const box = document.getElementById("currentToken");
+      box.style.background = tokenColor(state.current.type);
+    }
+
+    // Comprueba si el número actual está atascado y gestiona la ayuda suave
+    function afterTokenChanged(){
+      if (!state.running) return;
+
+      const valid = getValidIndices(state.current.value);
+      highlightValid(valid);
+
+      const canStore = state.stored.length < 3;
+      const anyStoredFits = state.stored.some(tok => getValidIndices(tok.value).length > 0);
+
+      if (valid.length === 0){
+        // ayuda suave: un reroll automático por piso si sale imposible
+        if (!state.softRerollUsed){
+          state.softRerollUsed = true;
+          setMsg(`No había hueco para ${state.current.value}. Reroll gratis del piso 😅`, "#0b6d00");
+          rollToken();
+          return;
+        }
+
+        // Si no puedes hacer nada (ni guardar ni usar guardados que encajen), game over.
+        if (!canStore && !anyStoredFits){
+          gameOver(`Te quedaste sin huecos posibles para ${state.current.value} y ningún guardado encaja.`);
+          return;
+        } else {
+          setMsg(`No hay hueco para ${state.current.value}. Guarda el número o usa un guardado que sí encaje.`, "#8a4b00");
+        }
+      } else {
+        setMsg("");
+      }
+    }
+
+    // =========================
+    // Guardados (inventario 3)
+    // =========================
+    function updateStoreUI(){
+      btnStore.textContent = `Guardar (${state.stored.length}/3)`;
+      btnStore.disabled = !state.running || !state.current || state.stored.length >= 3;
+
+      uiStoredTag.textContent = `${state.stored.length}/3`;
+
+      for (let i=0;i<3;i++){
+        const el = storedEls[i];
+        el.classList.remove("selected");
+
+        const vEl = el.querySelector(".v");
+        const tEl = el.querySelector(".t");
+
+        if (state.stored[i]){
+          vEl.textContent = String(state.stored[i].value);
+          tEl.textContent = `${tokenEmoji(state.stored[i].type)} ${state.stored[i].type}`;
+          el.style.background = tokenColor(state.stored[i].type);
+          el.style.opacity = "1";
+        } else {
+          vEl.textContent = "—";
+          tEl.textContent = "Vacío";
+          el.style.background = "#fff";
+          el.style.opacity = "0.9";
+        }
+
+        if (state.selectedStoredIndex === i){
+          el.classList.add("selected");
+        }
+      }
+    }
+
+    function storeCurrent(){
+      if (!state.running || !state.current) return;
+      if (state.stored.length >= 3) return;
+
+      // guardas el token completo (valor + tipo)
+      state.stored.push({ ...state.current });
+      state.selectedStoredIndex = -1;
+
+      updateStoreUI();
+      // al guardar, sacas un número nuevo
+      rollToken();
+    }
+
+    function toggleSelectStored(i){
+      if (!state.running) return;
+      if (!state.stored[i]) return;
+
+      if (state.selectedStoredIndex === i){
+        state.selectedStoredIndex = -1; // deseleccionar
+        rollToken(); // opcional: NO lo hago (sería raro). Mejor solo volver al token actual.
+        // pero como rollToken genera uno nuevo, no queremos eso.
+        // En su lugar, simplemente volvemos a "no usar guardado" y mantenemos el número actual tal cual.
+        // Así que revertimos el rollToken accidental (no lo llamamos). Dejamos:
+        // (lo arreglo abajo: quitamos esta línea. En vez de rollToken, restauramos token original.)
+      }
+    }
+
+    // Mejor: selección de guardado NO debe generar nada.
+    // Se implementa con estas funciones:
+    function selectStored(i){
+      if (!state.running) return;
+      if (!state.stored[i]) return;
+
+      // Toggle selección
+      if (state.selectedStoredIndex === i){
+        // deselecciona y vuelve a un roll normal (para evitar quedarte sin token, guardamos el actual antes)
+        state.selectedStoredIndex = -1;
+        // NO cambiamos el current
+      } else {
+        state.selectedStoredIndex = i;
+        state.current = { ...state.stored[i] }; // usar ese guardado como current
+      }
+
+      paintCurrentToken();
+      updateStoreUI();
+      afterTokenChanged();
+    }
+
+    // Cuando colocas un token seleccionado de guardado, se consume
+    function consumeSelectedStoredIfAny(){
+      if (state.selectedStoredIndex === -1) return;
+
+      state.stored.splice(state.selectedStoredIndex, 1);
+      state.selectedStoredIndex = -1;
+      updateStoreUI();
+    }
+
+    // =========================
+    // Click en slot
+    // =========================
+    function onSlotClick(idx){
+      if (!state.running || !state.current) return;
+
+      const value = state.current.value;
+      const valid = getValidIndices(value);
+      if (!valid.includes(idx)) return; // no es verde
+
+      // colocar
+      state.slots[idx] = value;
+
+      // Si venía de guardado, consumirlo ahora
+      consumeSelectedStoredIfAny();
+
+      // efecto del número verde
+      if (state.current.type === TokenType.Verde){
+        const target = idx - 1;
+        const ok = tryAutoFillSmaller(target, value);
+        if (ok){
+          setMsg(`🟩 Colocaste ${value} y autollenaste la casilla ${target+1}.`, "#0b6d00");
+        } else {
+          setMsg(`🟩 Colocaste ${value}, pero no se pudo autollenar la casilla anterior.`, "#255f2a");
+        }
+      } else {
+        setMsg("");
+      }
+
+      paintBoard();
+
+      // ganar piso
+      if (state.slots.every(v => v != null)){
+        floorClear();
+        return;
+      }
+
+      // siguiente token
+      rollToken();
+    }
+
+    // =========================
+    // Pisos / timer / start / gameover
+    // =========================
+    function applyFloorConfig(){
+      const cfg = floorConfigs[Math.min(state.floor-1, floorConfigs.length-1)];
+      state.size = cfg.size;
+      state.min = cfg.min;
+      state.max = cfg.max;
+      state.timeLeft = cfg.time;
+      state.softRerollUsed = false;
+
+      uiFloor.textContent = String(state.floor);
+      uiRange.textContent = `${state.min}–${state.max}`;
+      uiTime.textContent = formatTime(state.timeLeft);
+
+      // Reset slots del piso
+      state.slots = Array(state.size).fill(null);
+      state.current = null;
+      state.selectedStoredIndex = -1;
+
+      paintBoard();
+      clearHighlights();
+      paintCurrentToken();
+    }
+
+    function startTimer(){
+      stopTimer();
+      state.timerId = setInterval(() => {
+        state.timeLeft--;
+        uiTime.textContent = formatTime(Math.max(0, state.timeLeft));
+
+        if (state.timeLeft <= 0){
+          gameOver("Se acabó el tiempo.");
+        }
+      }, 1000);
+    }
+
+    function stopTimer(){
+      if (state.timerId){
+        clearInterval(state.timerId);
+        state.timerId = null;
+      }
+    }
+
+    function startRun(){
+      // reset run
+      state.running = true;
+      state.floor = 1;
+      state.stored = [];
+      state.selectedStoredIndex = -1;
+
+      setMsg("");
+      btnStart.disabled = true;
+
+      applyFloorConfig();
+      updateStoreUI();
+      startTimer();
+      rollToken();
+    }
+
+    function floorClear(){
+      stopTimer();
+      clearHighlights();
+
+      setMsg(`✅ Piso ${state.floor} completado. Siguiente piso...`, "#0b6d00");
+
+      // pequeño delay para que se vea
+      setTimeout(() => {
+        state.floor++;
+        applyFloorConfig();
+        updateStoreUI();
+        startTimer();
+        rollToken();
+      }, 900);
+    }
+
+    function gameOver(reason){
+      state.running = false;
+      stopTimer();
+      clearHighlights();
+
+      // pintar current como peligro
+      document.getElementById("currentToken").style.background = "var(--danger)";
+      setMsg(`❌ Game Over: ${reason}`, "rgb(200,0,0)");
+
+      btnStart.disabled = false;
+      btnStore.disabled = true;
+    }
+
+    // =========================
+    // Eventos UI
+    // =========================
+    btnStart.addEventListener("click", startRun);
+    btnStore.addEventListener("click", storeCurrent);
+
+    storedEls.forEach((el, i) => {
+      el.addEventListener("click", () => selectStored(i));
+    });
+
+    // =========================
+    // Init
+    // =========================
+    buildBoard();
+    applyFloorConfig();
+    updateStoreUI();
+    setMsg("Pulsa ▶ Empezar run para jugar.", "#111");
+  </script>
 </body>
 </html>
