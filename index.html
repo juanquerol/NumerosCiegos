@@ -18,7 +18,13 @@
     }
     *{ box-sizing: border-box; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
     body{ margin:0; background: var(--bg); display:flex; justify-content:center; padding:16px; }
-    .wrap{ width:min(980px, 100%); display:grid; gap:16px; grid-template-columns: 1fr 1fr; }
+    .wrap{
+      width:min(980px, 100%);
+      display:grid;
+      gap:16px;
+      grid-template-columns: 1fr 1fr;
+      align-items:start;
+    }
 
     .card{
       background: rgba(255,255,255,0.85);
@@ -27,21 +33,40 @@
       box-shadow: 0 8px 22px rgba(0,0,0,.12);
     }
 
+    /* --- INFO PANEL --- */
     #instrucciones{ background: rgba(255, 206, 206, 0.92); }
-    #instrucciones h1{ margin:0 0 10px; }
+    .infoHeader{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom: 10px;
+    }
+    #instrucciones h1{ margin:0; }
     #instrucciones p{ margin: 8px 0; line-height: 1.35; }
     #msg{ margin-top:10px; font-weight:700; }
 
+    /* --- GAME --- */
     #game{ background: rgba(255,255,255,0.9); }
     .topbar{
-      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap; /* mobile */
       background: var(--panel2);
       color:#fff;
       border-radius: 12px;
       padding: 10px 12px;
       margin-bottom: 10px;
     }
-    .topbar .stat{ font-size: 14px; opacity: .95; }
+    .topbar .leftStats{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap; /* mobile */
+      align-items:center;
+    }
+    .topbar .stat{ font-size: 14px; opacity: .95; white-space:nowrap; }
     .topbar .stat b{ font-size: 16px; }
 
     #tablero{
@@ -62,6 +87,7 @@
       cursor:pointer;
       user-select:none;
       transition: transform .03s ease, filter .12s ease, background-color .12s ease;
+      touch-action: manipulation;
     }
     .slot:active{ transform: scale(0.995); }
     .slot .num{
@@ -105,9 +131,10 @@
     #currentType{
       font-size: 18px;
       font-weight: 900;
+      white-space:nowrap;
     }
 
-    .btnRow{ display:flex; gap:10px; margin-top: 10px; }
+    .btnRow{ display:flex; gap:10px; margin-top: 10px; flex-wrap:wrap; }
     button{
       border: none;
       border-radius: 12px;
@@ -115,6 +142,7 @@
       cursor:pointer;
       font-weight: 900;
       transition: filter .12s ease, transform .03s ease;
+      touch-action: manipulation;
     }
     button:active{ transform: scale(0.995); }
     button:hover{ filter: brightness(0.98); }
@@ -122,7 +150,14 @@
 
     #btnStart{ background: var(--accent); }
     #btnStore{ background: #44d0ff; }
-    #btnUseCurrent{ background: #e9e9e9; }
+
+    .smallBtn{
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-weight: 900;
+      background: rgba(255,255,255,.14);
+      color: #fff;
+    }
 
     .storedTitle{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom: 8px; }
     .storedGrid{ display:grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -139,6 +174,7 @@
       flex-direction:column;
       justify-content:center;
       gap:4px;
+      touch-action: manipulation;
     }
     .stored .v{ font-weight: 1000; font-size: 18px; }
     .stored .t{ font-weight: 900; font-size: 14px; opacity: .9; }
@@ -160,13 +196,41 @@
       background: rgba(255,255,255,.16);
       margin-left: 6px;
     }
+
+    /* Toggle: ocultar info */
+    .hidden{ display:none !important; }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 900px){
+      body{ padding: 12px; }
+      .wrap{ grid-template-columns: 1fr; }
+      #tablero{ min-height: unset; }
+      .slot{ width: 100%; max-width: 520px; }
+    }
+    @media (max-width: 520px){
+      body{ padding: 10px; }
+      .card{ padding: 12px; }
+      .controls{ grid-template-columns: 1fr; }
+      #tablero{ padding: 8px; }
+      .slot{ height: 42px; margin: 8px auto; }
+      .slot .num{ font-size: 20px; }
+      #currentValue{ font-size: 20px; }
+      #currentType{ font-size: 16px; }
+      .btnRow button{ flex: 1 1 auto; }
+    }
   </style>
 </head>
 
 <body>
   <div class="wrap">
     <div id="instrucciones" class="card">
-      <h1>Números Ciegos (Roguelike)</h1>
+      <div class="infoHeader">
+        <h1>Información</h1>
+        <!-- Botón también aquí (por si quieres), pero el principal está en la barra del juego -->
+        <button id="btnToggleInfoA" style="background:#fff; border:2px solid rgba(0,0,0,.12);">Ocultar</button>
+      </div>
+
+      <h2 style="margin:0 0 8px;">Números Ciegos (Roguelike)</h2>
       <p>
         Objetivo: ordenar de menor a mayor colocando números en las casillas.
         El juego marca en <b style="color:#007c00">verde</b> dónde puedes colocar el número actual.
@@ -189,9 +253,12 @@
 
     <div id="game" class="card">
       <div class="topbar">
-        <div class="stat">Piso: <b id="uiFloor">1</b></div>
-        <div class="stat">Rango: <b id="uiRange">1–30</b></div>
-        <div class="stat">Tiempo: <b id="uiTime">01:30</b></div>
+        <div class="leftStats">
+          <div class="stat">Piso: <b id="uiFloor">1</b></div>
+          <div class="stat">Rango: <b id="uiRange">1–30</b></div>
+          <div class="stat">Tiempo: <b id="uiTime">01:30</b></div>
+        </div>
+        <button id="btnToggleInfo" class="smallBtn">Ocultar info</button>
       </div>
 
       <div id="tablero"></div>
@@ -260,10 +327,11 @@
       slots: [], // null => vacío, number => colocado
       current: null, // { value, type }
       stored: [], // hasta 3 tokens {value,type}
-      selectedStoredIndex: -1, // si estás usando un guardado
+      selectedStoredIndex: -1,
 
-      softRerollUsed: false, // ayuda suave por piso si sale número imposible
+      softRerollUsed: false,
       running: false,
+      infoHidden: false,
     };
 
     // Config de pisos (primeros fáciles)
@@ -281,6 +349,7 @@
     // =========================
     const tableroEl = document.getElementById("tablero");
     const msgEl = document.getElementById("msg");
+    const infoEl = document.getElementById("instrucciones");
 
     const uiFloor = document.getElementById("uiFloor");
     const uiRange = document.getElementById("uiRange");
@@ -291,6 +360,9 @@
 
     const btnStart = document.getElementById("btnStart");
     const btnStore = document.getElementById("btnStore");
+
+    const btnToggleInfo = document.getElementById("btnToggleInfo");
+    const btnToggleInfoA = document.getElementById("btnToggleInfoA");
 
     const storedEls = [
       document.getElementById("stored0"),
@@ -328,11 +400,29 @@
     }
 
     // =========================
+    // Toggle Info
+    // =========================
+    function applyInfoVisibility(){
+      if (state.infoHidden){
+        infoEl.classList.add("hidden");
+        btnToggleInfo.textContent = "Mostrar info";
+        btnToggleInfoA.textContent = "Mostrar";
+      } else {
+        infoEl.classList.remove("hidden");
+        btnToggleInfo.textContent = "Ocultar info";
+        btnToggleInfoA.textContent = "Ocultar";
+      }
+    }
+    function toggleInfo(){
+      state.infoHidden = !state.infoHidden;
+      applyInfoVisibility();
+    }
+
+    // =========================
     // Tablero (UI)
     // =========================
     function buildBoard(){
       tableroEl.innerHTML = "";
-      // creamos SIEMPRE 10 slots, y ocultamos los que no se usan en el piso
       for (let i=0;i<10;i++){
         const div = document.createElement("div");
         div.className = "slot";
@@ -351,12 +441,10 @@
     function paintBoard(){
       const slotDivs = [...document.querySelectorAll(".slot")];
 
-      // mostrar/ocultar según tamaño del piso
       slotDivs.forEach((el, i) => {
         el.style.display = (i < state.size) ? "flex" : "none";
       });
 
-      // pintar números y colores
       for (let i=0;i<state.size;i++){
         const el = slotDivs[i];
         const numEl = el.querySelector(".num");
@@ -394,10 +482,9 @@
     }
 
     // =========================
-    // Reglas de colocación (adaptación de tu lógica)
+    // Reglas de colocación
     // =========================
     function getValidIndices(value){
-      // guardado = primera casilla ocupada con número > value; si no, el final
       let guardado = state.size - 1;
 
       for (let i=0;i<state.size;i++){
@@ -423,12 +510,10 @@
       return getValidIndices(value).includes(idx);
     }
 
-    // Para el verde: autollenar idx-1 con algo menor válido
     function tryAutoFillSmaller(targetIdx, upperExclusive){
       if (targetIdx < 0 || targetIdx >= state.size) return false;
       if (state.slots[targetIdx] != null) return false;
 
-      // Min válido: (último ocupado antes del target) + 1, o min del piso
       let min = state.min;
       for (let i = targetIdx - 1; i >= 0; i--){
         if (state.slots[i] != null){
@@ -440,7 +525,6 @@
       const max = Math.min(state.max, upperExclusive - 1);
       if (min > max) return false;
 
-      // intentos aleatorios
       for (let t=0; t<20; t++){
         const candidate = randInt(min, max);
         if (canPlace(targetIdx, candidate)){
@@ -449,7 +533,6 @@
         }
       }
 
-      // último intento determinista (por si el azar falla)
       if (canPlace(targetIdx, min)){
         state.slots[targetIdx] = min;
         return true;
@@ -465,12 +548,11 @@
     // Números / tokens
     // =========================
     function rollToken(){
-      // 12% verde (ajusta a gusto)
       const r = randInt(1, 100);
       const type = (r <= 12) ? TokenType.Verde : TokenType.Normal;
       const value = randInt(state.min, state.max);
       state.current = { value, type };
-      state.selectedStoredIndex = -1; // al generar nuevo número, deselecciona guardado
+      state.selectedStoredIndex = -1;
 
       paintCurrentToken();
       updateStoreUI();
@@ -485,13 +567,9 @@
       }
       currentValueEl.textContent = String(state.current.value);
       currentTypeEl.textContent  = `${tokenEmoji(state.current.type)} ${state.current.type}`;
-
-      // colorear ligeramente el "token actual"
-      const box = document.getElementById("currentToken");
-      box.style.background = tokenColor(state.current.type);
+      document.getElementById("currentToken").style.background = tokenColor(state.current.type);
     }
 
-    // Comprueba si el número actual está atascado y gestiona la ayuda suave
     function afterTokenChanged(){
       if (!state.running) return;
 
@@ -502,7 +580,6 @@
       const anyStoredFits = state.stored.some(tok => getValidIndices(tok.value).length > 0);
 
       if (valid.length === 0){
-        // ayuda suave: un reroll automático por piso si sale imposible
         if (!state.softRerollUsed){
           state.softRerollUsed = true;
           setMsg(`No había hueco para ${state.current.value}. Reroll gratis del piso 😅`, "#0b6d00");
@@ -510,7 +587,6 @@
           return;
         }
 
-        // Si no puedes hacer nada (ni guardar ni usar guardados que encajen), game over.
         if (!canStore && !anyStoredFits){
           gameOver(`Te quedaste sin huecos posibles para ${state.current.value} y ningún guardado encaja.`);
           return;
@@ -523,7 +599,7 @@
     }
 
     // =========================
-    // Guardados (inventario 3)
+    // Guardados
     // =========================
     function updateStoreUI(){
       btnStore.textContent = `Guardar (${state.stored.length}/3)`;
@@ -560,43 +636,24 @@
       if (!state.running || !state.current) return;
       if (state.stored.length >= 3) return;
 
-      // guardas el token completo (valor + tipo)
       state.stored.push({ ...state.current });
       state.selectedStoredIndex = -1;
 
       updateStoreUI();
-      // al guardar, sacas un número nuevo
       rollToken();
     }
 
-    function toggleSelectStored(i){
-      if (!state.running) return;
-      if (!state.stored[i]) return;
-
-      if (state.selectedStoredIndex === i){
-        state.selectedStoredIndex = -1; // deseleccionar
-        rollToken(); // opcional: NO lo hago (sería raro). Mejor solo volver al token actual.
-        // pero como rollToken genera uno nuevo, no queremos eso.
-        // En su lugar, simplemente volvemos a "no usar guardado" y mantenemos el número actual tal cual.
-        // Así que revertimos el rollToken accidental (no lo llamamos). Dejamos:
-        // (lo arreglo abajo: quitamos esta línea. En vez de rollToken, restauramos token original.)
-      }
-    }
-
-    // Mejor: selección de guardado NO debe generar nada.
-    // Se implementa con estas funciones:
     function selectStored(i){
       if (!state.running) return;
       if (!state.stored[i]) return;
 
-      // Toggle selección
       if (state.selectedStoredIndex === i){
-        // deselecciona y vuelve a un roll normal (para evitar quedarte sin token, guardamos el actual antes)
         state.selectedStoredIndex = -1;
-        // NO cambiamos el current
+        // volvemos al número actual (se queda como estaba)
+        // no hacemos nada más
       } else {
         state.selectedStoredIndex = i;
-        state.current = { ...state.stored[i] }; // usar ese guardado como current
+        state.current = { ...state.stored[i] };
       }
 
       paintCurrentToken();
@@ -604,10 +661,8 @@
       afterTokenChanged();
     }
 
-    // Cuando colocas un token seleccionado de guardado, se consume
     function consumeSelectedStoredIfAny(){
       if (state.selectedStoredIndex === -1) return;
-
       state.stored.splice(state.selectedStoredIndex, 1);
       state.selectedStoredIndex = -1;
       updateStoreUI();
@@ -621,15 +676,11 @@
 
       const value = state.current.value;
       const valid = getValidIndices(value);
-      if (!valid.includes(idx)) return; // no es verde
+      if (!valid.includes(idx)) return;
 
-      // colocar
       state.slots[idx] = value;
-
-      // Si venía de guardado, consumirlo ahora
       consumeSelectedStoredIfAny();
 
-      // efecto del número verde
       if (state.current.type === TokenType.Verde){
         const target = idx - 1;
         const ok = tryAutoFillSmaller(target, value);
@@ -644,13 +695,11 @@
 
       paintBoard();
 
-      // ganar piso
       if (state.slots.every(v => v != null)){
         floorClear();
         return;
       }
 
-      // siguiente token
       rollToken();
     }
 
@@ -669,7 +718,6 @@
       uiRange.textContent = `${state.min}–${state.max}`;
       uiTime.textContent = formatTime(state.timeLeft);
 
-      // Reset slots del piso
       state.slots = Array(state.size).fill(null);
       state.current = null;
       state.selectedStoredIndex = -1;
@@ -684,7 +732,6 @@
       state.timerId = setInterval(() => {
         state.timeLeft--;
         uiTime.textContent = formatTime(Math.max(0, state.timeLeft));
-
         if (state.timeLeft <= 0){
           gameOver("Se acabó el tiempo.");
         }
@@ -699,7 +746,6 @@
     }
 
     function startRun(){
-      // reset run
       state.running = true;
       state.floor = 1;
       state.stored = [];
@@ -717,10 +763,8 @@
     function floorClear(){
       stopTimer();
       clearHighlights();
-
       setMsg(`✅ Piso ${state.floor} completado. Siguiente piso...`, "#0b6d00");
 
-      // pequeño delay para que se vea
       setTimeout(() => {
         state.floor++;
         applyFloorConfig();
@@ -735,7 +779,6 @@
       stopTimer();
       clearHighlights();
 
-      // pintar current como peligro
       document.getElementById("currentToken").style.background = "var(--danger)";
       setMsg(`❌ Game Over: ${reason}`, "rgb(200,0,0)");
 
@@ -749,9 +792,10 @@
     btnStart.addEventListener("click", startRun);
     btnStore.addEventListener("click", storeCurrent);
 
-    storedEls.forEach((el, i) => {
-      el.addEventListener("click", () => selectStored(i));
-    });
+    storedEls.forEach((el, i) => el.addEventListener("click", () => selectStored(i)));
+
+    btnToggleInfo.addEventListener("click", toggleInfo);
+    btnToggleInfoA.addEventListener("click", toggleInfo);
 
     // =========================
     // Init
@@ -759,8 +803,8 @@
     buildBoard();
     applyFloorConfig();
     updateStoreUI();
+    applyInfoVisibility();
     setMsg("Pulsa ▶ Empezar run para jugar.", "#111");
   </script>
 </body>
 </html>
-
