@@ -6,8 +6,7 @@
   <title>Números Ciegos: Roguelike</title>
   <style>
     :root{
-      --bg: #00d6ff;
-      --panel: #1f1f1f;
+      --bg:#00d6ff;
       --panel2:#2a2a2a;
       --slot:#a1b1c0;
       --slotText:#6a7580;
@@ -15,9 +14,11 @@
       --placed:#ffffff;
       --danger:#ff9191;
       --accent:#ffe600;
+      --gold:#ffe600;
     }
-    *{ box-sizing: border-box; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
-    body{ margin:0; background: var(--bg); display:flex; justify-content:center; padding:16px; }
+    *{ box-sizing:border-box; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    body{ margin:0; background:var(--bg); display:flex; justify-content:center; padding:16px; overflow-x:hidden; }
+
     .wrap{
       width:min(980px, 100%);
       display:grid;
@@ -25,256 +26,512 @@
       grid-template-columns: 1fr 1fr;
       align-items:start;
     }
-
     .card{
       background: rgba(255,255,255,0.85);
       border-radius: 14px;
-      padding: 14px 14px;
+      padding: 14px;
       box-shadow: 0 8px 22px rgba(0,0,0,.12);
     }
 
-    /* --- INFO PANEL --- */
+    /* Info */
     #instrucciones{ background: rgba(255, 206, 206, 0.92); }
-    .infoHeader{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      margin-bottom: 10px;
-    }
+    .infoHeader{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom: 10px; }
     #instrucciones h1{ margin:0; }
-    #instrucciones p{ margin: 8px 0; line-height: 1.35; }
-    #msg{ margin-top:10px; font-weight:700; }
+    #instrucciones p{ margin: 8px 0; line-height:1.35; }
+    #msg{ margin-top:10px; font-weight:900; }
+    .hint{ font-size:12px; opacity:.85; margin-top:8px; line-height:1.25; }
+    .hidden{ display:none !important; }
 
-    /* --- GAME --- */
-    #game{ background: rgba(255,255,255,0.9); }
+    /* Game */
+    #game{ background: rgba(255,255,255,0.9); position:relative; }
     .topbar{
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:10px;
-      flex-wrap:wrap; /* mobile */
+      flex-wrap:wrap;
       background: var(--panel2);
       color:#fff;
       border-radius: 12px;
       padding: 10px 12px;
       margin-bottom: 10px;
+      position:relative;
+      overflow:hidden;
     }
-    .topbar .leftStats{
-      display:flex;
-      gap:12px;
-      flex-wrap:wrap; /* mobile */
-      align-items:center;
+    .leftStats{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+    .stat{ font-size: 14px; opacity:.95; white-space:nowrap; position:relative; }
+    .stat b{ font-size:16px; }
+
+    /* Coin pop text */
+    .floatText{
+      position:absolute;
+      right:0;
+      top:-4px;
+      transform: translateY(0);
+      font-weight:1000;
+      font-size: 13px;
+      opacity:0;
+      pointer-events:none;
     }
-    .topbar .stat{ font-size: 14px; opacity: .95; white-space:nowrap; }
-    .topbar .stat b{ font-size: 16px; }
+    .floatText.show{ animation: floatUp .8s ease-out forwards; }
 
     #tablero{
-      background: #777;
-      border-radius: 12px;
-      padding: 10px;
-      min-height: 520px;
+      background:#777;
+      border-radius:12px;
+      padding:10px;
+      min-height:520px;
+      position:relative;
+      overflow:hidden;
     }
+
     .slot{
-      height: 44px;
-      border-radius: 12px;
+      height:44px;
+      border-radius:12px;
       background: var(--slot);
-      margin: 10px auto;
+      margin:10px auto;
       width: min(340px, 100%);
       display:flex;
       align-items:center;
       justify-content:center;
       cursor:pointer;
       user-select:none;
-      transition: transform .03s ease, filter .12s ease, background-color .12s ease;
+      transition: transform .06s ease, background-color .12s ease, filter .12s ease;
       touch-action: manipulation;
+      position:relative;
+      overflow:hidden;
     }
-    .slot:active{ transform: scale(0.995); }
-    .slot .num{
-      font-size: 22px;
-      font-weight: 800;
-      color: var(--slotText);
+    .slot:active{ transform: scale(0.992); }
+
+    .slot .num{ font-size:22px; font-weight:1000; color: var(--slotText); }
+
+    /* highlight pulse for valid slots */
+    .slot.valid{
+      background: var(--ok) !important;
+      animation: validPulse 0.9s ease-in-out infinite;
+      filter: drop-shadow(0 10px 14px rgba(0,0,0,0.18));
     }
+
+    /* placement “juice” */
+    .slot.pop{ animation: pop .18s ease-out; }
+    .slot.flash-green::after,
+    .slot.flash-gold::after{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      border-radius:14px;
+      opacity:0;
+      pointer-events:none;
+    }
+    .slot.flash-green::after{ background: radial-gradient(circle at 50% 50%, rgba(0,255,120,.9), rgba(0,255,120,0) 60%); }
+    .slot.flash-gold::after{ background: radial-gradient(circle at 50% 50%, rgba(255,230,0,.95), rgba(255,230,0,0) 60%); }
+    .slot.flash-green{ animation: flash 0.35s ease-out; }
+    .slot.flash-gold{ animation: flash 0.35s ease-out; }
 
     .controls{
       display:grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 10px;
+      gap:10px;
+      margin-top:10px;
     }
-
-    .box{
-      border-radius: 12px;
-      padding: 10px;
-      background: rgba(0,0,0,0.06);
-    }
-
-    .currentRow{
-      display:flex; align-items:center; justify-content:space-between; gap:10px;
-    }
+    .box{ border-radius:12px; padding:10px; background: rgba(0,0,0,0.06); }
 
     #currentToken{
-      flex: 1;
-      border-radius: 12px;
-      background: #fff;
-      border: 2px solid rgba(0,0,0,.08);
-      padding: 10px 12px;
+      border-radius:12px;
+      background:#fff;
+      border:2px solid rgba(0,0,0,.08);
+      padding:10px 12px;
       display:flex;
       align-items:center;
       justify-content:space-between;
-      min-height: 48px;
+      min-height:48px;
+      gap:10px;
     }
-    #currentValue{
-      font-size: 22px;
-      font-weight: 900;
-    }
-    #currentType{
-      font-size: 18px;
-      font-weight: 900;
-      white-space:nowrap;
-    }
+    #currentValue{ font-size:22px; font-weight:1000; }
+    #currentType{ font-size:18px; font-weight:1000; white-space:nowrap; }
 
-    .btnRow{ display:flex; gap:10px; margin-top: 10px; flex-wrap:wrap; }
+    .btnRow{ display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; }
     button{
-      border: none;
-      border-radius: 12px;
-      padding: 10px 12px;
+      border:none;
+      border-radius:12px;
+      padding:10px 12px;
       cursor:pointer;
-      font-weight: 900;
-      transition: filter .12s ease, transform .03s ease;
+      font-weight:1000;
+      transition: filter .12s ease, transform .06s ease;
       touch-action: manipulation;
     }
-    button:active{ transform: scale(0.995); }
+    button:active{ transform: scale(0.992); }
     button:hover{ filter: brightness(0.98); }
-    button:disabled{ opacity: .5; cursor:not-allowed; }
+    button:disabled{ opacity:.5; cursor:not-allowed; }
 
     #btnStart{ background: var(--accent); }
     #btnStore{ background: #44d0ff; }
 
     .smallBtn{
-      border-radius: 10px;
-      padding: 8px 10px;
-      font-weight: 900;
+      border-radius:10px;
+      padding:8px 10px;
+      font-weight:1000;
       background: rgba(255,255,255,.14);
-      color: #fff;
+      color:#fff;
     }
 
-    .storedTitle{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom: 8px; }
-    .storedGrid{ display:grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .storedTitle{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
+    .tag{
+      display:inline-block;
+      padding:2px 8px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:1000;
+      background: rgba(255,255,255,.16);
+      margin-left:6px;
+      color:#fff;
+    }
+    .storedGrid{ display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; }
     .stored{
-      background: #fff;
-      border-radius: 12px;
-      border: 2px solid rgba(0,0,0,.08);
-      padding: 10px 8px;
+      background:#fff;
+      border-radius:12px;
+      border:2px solid rgba(0,0,0,.08);
+      padding:10px 8px;
       text-align:center;
       cursor:pointer;
       user-select:none;
-      min-height: 52px;
+      min-height:52px;
       display:flex;
       flex-direction:column;
       justify-content:center;
       gap:4px;
       touch-action: manipulation;
+      transition: transform .08s ease, filter .12s ease;
     }
-    .stored .v{ font-weight: 1000; font-size: 18px; }
-    .stored .t{ font-weight: 900; font-size: 14px; opacity: .9; }
-    .stored.selected{ outline: 3px solid rgba(0, 140, 255, .6); }
+    .stored:active{ transform: scale(0.99); }
+    .stored .v{ font-weight:1000; font-size:18px; }
+    .stored .t{ font-weight:1000; font-size:14px; opacity:.9; }
+    .stored.selected{ outline: 3px solid rgba(0, 140, 255, .6); filter: drop-shadow(0 8px 12px rgba(0,0,0,.12)); }
 
-    .hint{
-      font-size: 12px;
-      opacity: .8;
-      margin-top: 8px;
-      line-height: 1.25;
+    /* Overlays */
+    .overlay{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.55);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+      z-index: 999;
+      backdrop-filter: blur(2px);
     }
+    .modal{
+      width: min(560px, 100%);
+      background: rgba(255,255,255,0.95);
+      border-radius: 16px;
+      box-shadow: 0 18px 50px rgba(0,0,0,.25);
+      padding: 14px;
+      transform: translateY(10px);
+      opacity: 0;
+    }
+    .overlay:not(.hidden) .modal{
+      animation: modalIn .22s ease-out forwards;
+    }
+    .modal h1, .modal h2{ margin: 0 0 10px; }
+    .modal p{ margin: 8px 0; line-height:1.35; }
+    .modal .row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top: 10px;
+    }
+    .modal .row button{ flex: 1 1 140px; }
+    .opt{
+      margin-top: 10px;
+      background: rgba(0,0,0,0.06);
+      border-radius: 12px;
+      padding: 10px;
+      display:grid;
+      gap:10px;
+    }
+    .opt label{ display:flex; align-items:center; justify-content:space-between; gap:10px; font-weight:900; }
+    .opt input[type="range"]{ width: 180px; }
 
-    .tag{
-      display:inline-block;
-      padding: 2px 8px;
+    /* Shop */
+    .shopHeader{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom: 8px;
+    }
+    .coinPill{
+      background: rgba(0,0,0,0.08);
+      padding: 6px 10px;
       border-radius: 999px;
+      font-weight: 1000;
+      white-space: nowrap;
+      position:relative;
+      overflow:visible;
+    }
+    .coinPill.bounce{ animation: coinBounce .25s ease-out; }
+    .shopGrid{ display:grid; grid-template-columns: 1fr; gap: 10px; margin-top: 10px; }
+    .shopItem{
+      background: rgba(0,0,0,0.05);
+      border-radius: 12px;
+      padding: 10px;
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+      justify-content:space-between;
+      flex-wrap:wrap;
+      transform: translateY(0);
+    }
+    .shopItem.shake{ animation: shake 0.35s ease-out; }
+    .shopItem.sold{ opacity: .7; filter: grayscale(.2); }
+    .shopItem.boughtFx{ animation: boughtFx .38s ease-out; }
+    .shopItem h3{ margin:0 0 6px; }
+    .shopItem p{ margin:0; opacity: .9; }
+    .price{ font-weight: 1000; white-space: nowrap; margin-top: 4px; }
+    .shopLeft{ flex: 1 1 260px; min-width: 220px; }
+    .shopRight{ display:flex; flex-direction:column; gap:8px; align-items:stretch; flex: 0 0 160px; }
+    .shopRight button{ width: 100%; }
+    .shopMini{
+      margin-top: 10px;
       font-size: 12px;
-      font-weight: 900;
-      background: rgba(255,255,255,.16);
-      margin-left: 6px;
+      opacity: .9;
+      line-height: 1.25;
+      background: rgba(0,0,0,0.05);
+      border-radius: 12px;
+      padding: 10px;
     }
 
-    /* Toggle: ocultar info */
-    .hidden{ display:none !important; }
+    /* Toast */
+    #toast{
+      position: fixed;
+      left: 50%;
+      top: 14px;
+      transform: translateX(-50%) translateY(-10px);
+      background: rgba(20,20,20,0.85);
+      color:#fff;
+      padding: 10px 12px;
+      border-radius: 999px;
+      font-weight: 1000;
+      opacity:0;
+      z-index: 1200;
+      pointer-events:none;
+      white-space: nowrap;
+      max-width: 92vw;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      box-shadow: 0 10px 24px rgba(0,0,0,.28);
+    }
+    #toast.show{ animation: toastInOut 1.25s ease-out forwards; }
 
-    /* ---------- Responsive ---------- */
+    /* Screen shake */
+    .shakeScreen{ animation: screenShake .35s ease-out; }
+
+    /* Confetti canvas */
+    #fxCanvas{
+      position: fixed;
+      inset: 0;
+      pointer-events:none;
+      z-index: 1100;
+    }
+
+    /* Animations */
+    @keyframes modalIn{
+      from{ transform: translateY(14px); opacity:0; }
+      to{ transform: translateY(0px); opacity:1; }
+    }
+    @keyframes pop{
+      0%{ transform: scale(1); }
+      60%{ transform: scale(1.05); }
+      100%{ transform: scale(1); }
+    }
+    @keyframes flash{
+      0%{ filter: brightness(1); }
+      40%{ filter: brightness(1.2); }
+      100%{ filter: brightness(1); }
+    }
+    @keyframes validPulse{
+      0%{ transform: scale(1); }
+      50%{ transform: scale(1.01); }
+      100%{ transform: scale(1); }
+    }
+    @keyframes shake{
+      0%{ transform: translateX(0); }
+      20%{ transform: translateX(-6px); }
+      40%{ transform: translateX(6px); }
+      60%{ transform: translateX(-4px); }
+      80%{ transform: translateX(4px); }
+      100%{ transform: translateX(0); }
+    }
+    @keyframes coinBounce{
+      0%{ transform: scale(1); }
+      60%{ transform: scale(1.12); }
+      100%{ transform: scale(1); }
+    }
+    @keyframes floatUp{
+      0%{ opacity:0; transform: translateY(8px); }
+      25%{ opacity:1; }
+      100%{ opacity:0; transform: translateY(-18px); }
+    }
+    @keyframes toastInOut{
+      0%{ opacity:0; transform: translateX(-50%) translateY(-10px) scale(0.98); }
+      15%{ opacity:1; transform: translateX(-50%) translateY(0px) scale(1); }
+      75%{ opacity:1; transform: translateX(-50%) translateY(0px) scale(1); }
+      100%{ opacity:0; transform: translateX(-50%) translateY(-10px) scale(0.98); }
+    }
+    @keyframes screenShake{
+      0%{ transform: translate(0,0); }
+      15%{ transform: translate(-6px, 2px); }
+      30%{ transform: translate(5px, -2px); }
+      45%{ transform: translate(-4px, 2px); }
+      60%{ transform: translate(4px, -2px); }
+      100%{ transform: translate(0,0); }
+    }
+    @keyframes boughtFx{
+      0%{ transform: translateY(0) scale(1); filter: brightness(1); }
+      45%{ transform: translateY(-3px) scale(1.02); filter: brightness(1.1); }
+      100%{ transform: translateY(0) scale(1); filter: brightness(1); }
+    }
+
+    /* Responsive */
     @media (max-width: 900px){
-      body{ padding: 12px; }
+      body{ padding:12px; }
       .wrap{ grid-template-columns: 1fr; }
       #tablero{ min-height: unset; }
       .slot{ width: 100%; max-width: 520px; }
     }
     @media (max-width: 520px){
-      body{ padding: 10px; }
-      .card{ padding: 12px; }
+      body{ padding:10px; }
+      .card{ padding:12px; }
       .controls{ grid-template-columns: 1fr; }
-      #tablero{ padding: 8px; }
-      .slot{ height: 42px; margin: 8px auto; }
-      .slot .num{ font-size: 20px; }
-      #currentValue{ font-size: 20px; }
-      #currentType{ font-size: 16px; }
+      #tablero{ padding:8px; }
+      .slot{ height:42px; margin:8px auto; }
+      .slot .num{ font-size:20px; }
+      #currentValue{ font-size:20px; }
+      #currentType{ font-size:16px; }
       .btnRow button{ flex: 1 1 auto; }
+      .opt input[type="range"]{ width: 140px; }
+      .shopRight{ flex: 1 1 160px; }
+      #toast{ top: 10px; }
     }
   </style>
 </head>
 
 <body>
+  <canvas id="fxCanvas"></canvas>
+  <div id="toast"></div>
+
+  <!-- MENÚ PRINCIPAL -->
+  <div id="overlayMenu" class="overlay">
+    <div class="modal">
+      <h1>Números Ciegos</h1>
+      <p>
+        Ordena los números de menor a mayor. Puedes <b>guardar hasta 3</b> y hay números especiales 🟩🟨.
+        Entre pisos aparece una <b>tienda</b> estilo “Balatro”.
+      </p>
+      <div class="row">
+        <button id="menuPlay" style="background: var(--accent);">▶ Jugar</button>
+        <button id="menuToggleInfo" style="background:#eaeaea;">Info: Mostrar/Ocultar</button>
+      </div>
+
+      <div class="opt">
+        <label>Música <input id="musicToggle" type="checkbox" checked /></label>
+        <label>Sonidos <input id="sfxToggle" type="checkbox" checked /></label>
+        <label>Volumen <input id="volSlider" type="range" min="0" max="100" value="70" /></label>
+      </div>
+
+      <div class="hint">Tip: Dopamina = luces + monedas + confeti + tienda 😈</div>
+    </div>
+  </div>
+
+  <!-- MENÚ DE PAUSA / GAME OVER -->
+  <div id="overlayPause" class="overlay hidden" aria-hidden="true">
+    <div class="modal">
+      <h2 id="pauseTitle">Pausa</h2>
+      <div class="row">
+        <button id="pauseResume" style="background:#44d0ff;">▶ Reanudar</button>
+        <button id="pauseRestart" style="background:#eaeaea;">↻ Reiniciar</button>
+        <button id="pauseMenu" style="background:#ffd2d2;">⟵ Menú</button>
+      </div>
+
+      <div class="opt">
+        <label>Música <input id="musicToggle2" type="checkbox" checked /></label>
+        <label>Sonidos <input id="sfxToggle2" type="checkbox" checked /></label>
+        <label>Volumen <input id="volSlider2" type="range" min="0" max="100" value="70" /></label>
+      </div>
+
+      <div class="hint">Atajo: <b>Esc</b> para pausar / reanudar.</div>
+    </div>
+  </div>
+
+  <!-- TIENDA ENTRE PISOS -->
+  <div id="overlayShop" class="overlay hidden" aria-hidden="true">
+    <div class="modal">
+      <div class="shopHeader">
+        <h2 style="margin:0;">🛒 Tienda</h2>
+        <div class="coinPill" id="shopCoinPill">🪙 Monedas: <span id="shopCoins">0</span></div>
+      </div>
+      <div style="opacity:.9">
+        Piso completado. Compra algo y luego pulsa <b>Continuar</b>.
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button id="shopReroll" style="background:#eaeaea;">🔄 Cambiar ofertas (2🪙)</button>
+        <button id="shopContinue" style="background:#44d0ff;">➡ Continuar</button>
+      </div>
+
+      <div id="shopList" class="shopGrid"></div>
+      <div class="shopMini" id="shopSummary"></div>
+    </div>
+  </div>
+
   <div class="wrap">
     <div id="instrucciones" class="card">
       <div class="infoHeader">
         <h1>Información</h1>
-        <!-- Botón también aquí (por si quieres), pero el principal está en la barra del juego -->
         <button id="btnToggleInfoA" style="background:#fff; border:2px solid rgba(0,0,0,.12);">Ocultar</button>
       </div>
 
-      <h2 style="margin:0 0 8px;">Números Ciegos (Roguelike)</h2>
-      <p>
-        Objetivo: ordenar de menor a mayor colocando números en las casillas.
-        El juego marca en <b style="color:#007c00">verde</b> dónde puedes colocar el número actual.
-      </p>
-      <p>
-        <b>Nuevo:</b> puedes <b>guardar hasta 3 números</b> para usarlos más tarde.
-        También hay <b>números especiales</b>:
-      </p>
-      <p>
-        🟩 <b>Número Verde</b>: al colocarlo, intenta <b>autollenar la casilla anterior</b> con un número menor válido.
-      </p>
-      <p>
-        Cada piso (nivel) empieza fácil: menos casillas y rango pequeño. Si completas un piso, pasas al siguiente.
-      </p>
+      <h2 style="margin:0 0 8px;">Roguelike</h2>
+      <p>El juego marca en <b style="color:#007c00">verde</b> dónde puedes colocar el número actual.</p>
+      <p><b>Guardar:</b> puedes guardar hasta <b>3 números</b> para usarlos más tarde.</p>
+      <p>🟩 <b>Verde:</b> al colocarlo, intenta <b>autollenar la casilla anterior</b> con un número menor válido.</p>
+      <p>🟨 <b>Dorado:</b> se puede colocar en <b>cualquier casilla vacía</b>.</p>
+      <p><b>Tienda:</b> al terminar un piso compras comodines y mejoras.</p>
+
       <div id="msg"></div>
-      <div class="hint">
-        Tip: Si un número no tiene hueco, prueba a guardarlo o usa un guardado que sí encaje.
-      </div>
+      <div class="hint">Tip: jugar bien = colocar rápido + guardar inteligente + comprar mejoras.</div>
     </div>
 
     <div id="game" class="card">
-      <div class="topbar">
+      <div class="topbar" id="topbar">
         <div class="leftStats">
           <div class="stat">Piso: <b id="uiFloor">1</b></div>
           <div class="stat">Rango: <b id="uiRange">1–30</b></div>
           <div class="stat">Tiempo: <b id="uiTime">01:30</b></div>
+
+          <div class="stat" id="coinStat" style="padding-right:18px;">
+            Monedas: <b id="uiCoins">0</b>
+            <span class="floatText" id="coinFloat">+1🪙</span>
+          </div>
         </div>
-        <button id="btnToggleInfo" class="smallBtn">Ocultar info</button>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button id="btnToggleInfo" class="smallBtn">Ocultar info</button>
+          <button id="btnPause" class="smallBtn">⏸ Pausa</button>
+        </div>
       </div>
 
       <div id="tablero"></div>
 
       <div class="controls">
         <div class="box">
-          <div class="currentRow">
-            <div id="currentToken" aria-live="polite">
-              <div>
-                <div style="font-size:12px; opacity:.7; font-weight:800;">Número actual</div>
-                <div id="currentValue">—</div>
-              </div>
-              <div style="text-align:right">
-                <div style="font-size:12px; opacity:.7; font-weight:800;">Tipo</div>
-                <div id="currentType">—</div>
-              </div>
+          <div id="currentToken" aria-live="polite">
+            <div>
+              <div style="font-size:12px; opacity:.7; font-weight:900;">Número actual</div>
+              <div id="currentValue">—</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:12px; opacity:.7; font-weight:900;">Tipo</div>
+              <div id="currentType">—</div>
             </div>
           </div>
 
@@ -284,8 +541,7 @@
           </div>
 
           <div class="hint">
-            🟩 Verde autollenará la casilla anterior si puede.<br/>
-            Si seleccionas un guardado, se usa como número actual hasta que lo coloques.
+            Consejo dopamina: compra <b>Propina</b> + <b>Tiempo</b> y verás el “snowball” 😄
           </div>
         </div>
 
@@ -299,9 +555,7 @@
             <div class="stored" id="stored1"><div class="v">—</div><div class="t">Vacío</div></div>
             <div class="stored" id="stored2"><div class="v">—</div><div class="t">Vacío</div></div>
           </div>
-          <div class="hint">
-            Click en un guardado para seleccionarlo. Click de nuevo para deseleccionar.
-          </div>
+          <div class="hint">Click en un guardado para seleccionarlo. Click otra vez para volver al número original.</div>
         </div>
       </div>
     </div>
@@ -309,12 +563,281 @@
 
   <script>
     // =========================
-    // Estado del juego
+    // Helpers “juice”
     // =========================
-    const TokenType = {
-      Normal: "Normal",
-      Verde: "Verde",
+    function restartClass(el, cls) {
+      if (!el) return;
+      el.classList.remove(cls);
+      void el.offsetWidth; // force reflow
+      el.classList.add(cls);
+    }
+    function addTempClass(el, cls, ms=300) {
+      if (!el) return;
+      restartClass(el, cls);
+      setTimeout(() => el.classList.remove(cls), ms);
+    }
+    function toast(text) {
+      const t = document.getElementById("toast");
+      t.textContent = text;
+      restartClass(t, "show");
+    }
+    function shakeGame() {
+      addTempClass(document.getElementById("game"), "shakeScreen", 380);
+    }
+
+    // =========================
+    // Confetti / particles (canvas)
+    // =========================
+    const fx = {
+      canvas: document.getElementById("fxCanvas"),
+      ctx: null,
+      w: 0,
+      h: 0,
+      parts: [],
+      raf: null,
     };
+
+    function resizeFx() {
+      fx.w = fx.canvas.width = window.innerWidth * devicePixelRatio;
+      fx.h = fx.canvas.height = window.innerHeight * devicePixelRatio;
+      fx.canvas.style.width = window.innerWidth + "px";
+      fx.canvas.style.height = window.innerHeight + "px";
+      fx.ctx = fx.canvas.getContext("2d");
+    }
+    window.addEventListener("resize", resizeFx);
+    resizeFx();
+
+    function spawnBurst(x, y, count, power=1) {
+      // x,y in CSS pixels
+      const px = x * devicePixelRatio;
+      const py = y * devicePixelRatio;
+
+      for (let i=0;i<count;i++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = (4 + Math.random()*8) * power;
+        fx.parts.push({
+          x: px,
+          y: py,
+          vx: Math.cos(a) * sp,
+          vy: Math.sin(a) * sp - 6 * power,
+          g: 0.35 * devicePixelRatio,
+          life: 55 + Math.random()*35,
+          r: 2 + Math.random()*3,
+          rot: Math.random()*Math.PI,
+          vr: (Math.random()-0.5)*0.25,
+          // random bright-ish color
+          c: `hsl(${Math.floor(Math.random()*360)}, 90%, 60%)`,
+        });
+      }
+      startFxLoop();
+    }
+
+    function startFxLoop(){
+      if (fx.raf) return;
+      const loop = () => {
+        fx.raf = requestAnimationFrame(loop);
+        const ctx = fx.ctx;
+        if (!ctx) return;
+        ctx.clearRect(0,0,fx.w,fx.h);
+
+        for (let i=fx.parts.length-1;i>=0;i--){
+          const p = fx.parts[i];
+          p.vy += p.g;
+          p.x += p.vx * devicePixelRatio * 0.25;
+          p.y += p.vy * devicePixelRatio * 0.25;
+          p.rot += p.vr;
+          p.life -= 1;
+
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.fillStyle = p.c;
+          ctx.globalAlpha = Math.max(0, Math.min(1, p.life / 80));
+          ctx.fillRect(-p.r*devicePixelRatio, -p.r*devicePixelRatio, (p.r*2.4)*devicePixelRatio, (p.r*1.1)*devicePixelRatio);
+          ctx.restore();
+
+          if (p.life <= 0 || p.y > fx.h + 200) fx.parts.splice(i,1);
+        }
+
+        if (fx.parts.length === 0){
+          cancelAnimationFrame(fx.raf);
+          fx.raf = null;
+          ctx.clearRect(0,0,fx.w,fx.h);
+        }
+      };
+      loop();
+    }
+
+    // Convenient: burst from element center
+    function burstFromEl(el, count=22, power=1) {
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      spawnBurst(r.left + r.width/2, r.top + r.height/2, count, power);
+    }
+
+    // =========================
+    // AUDIO (Web Audio sin archivos)
+    // =========================
+    const audio = {
+      ctx: null,
+      master: null,
+      musicGain: null,
+      sfxGain: null,
+      vol: 0.70,
+      musicOn: true,
+      sfxOn: true,
+      musicSchedulerId: null,
+      isMusicPlaying: false,
+      nextNoteTime: 0,
+      step: 0,
+      bpm: 112,
+      lookaheadMs: 25,
+      scheduleAheadSec: 0.20,
+    };
+
+    function ensureAudio() {
+      if (audio.ctx) return;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      audio.ctx = new AC();
+
+      audio.master = audio.ctx.createGain();
+      audio.master.gain.value = audio.vol;
+      audio.master.connect(audio.ctx.destination);
+
+      audio.musicGain = audio.ctx.createGain();
+      audio.musicGain.gain.value = audio.musicOn ? 0.22 : 0.0;
+      audio.musicGain.connect(audio.master);
+
+      audio.sfxGain = audio.ctx.createGain();
+      audio.sfxGain.gain.value = audio.sfxOn ? 0.85 : 0.0;
+      audio.sfxGain.connect(audio.master);
+    }
+
+    async function resumeAudioContext() {
+      ensureAudio();
+      if (audio.ctx.state === "suspended") {
+        try { await audio.ctx.resume(); } catch {}
+      }
+    }
+
+    function setVolume01(v01) {
+      audio.vol = Math.max(0, Math.min(1, v01));
+      if (audio.master) audio.master.gain.value = audio.vol;
+    }
+    function setMusicOn(on) {
+      audio.musicOn = !!on;
+      if (audio.musicGain) audio.musicGain.gain.value = audio.musicOn ? 0.22 : 0.0;
+      if (!audio.musicOn) stopMusic();
+      else if (state.running && !state.paused) startMusic();
+    }
+    function setSfxOn(on) {
+      audio.sfxOn = !!on;
+      if (audio.sfxGain) audio.sfxGain.gain.value = audio.sfxOn ? 0.85 : 0.0;
+    }
+
+    function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+
+    function beep({freq=440, dur=0.08, type="sine", gain=0.18, slideTo=null} = {}) {
+      ensureAudio();
+      if (!audio.sfxOn) return;
+      const t0 = audio.ctx.currentTime;
+
+      const o = audio.ctx.createOscillator();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, t0);
+      if (slideTo != null) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+
+      const g = audio.ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(gain, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+
+      o.connect(g);
+      g.connect(audio.sfxGain);
+
+      o.start(t0);
+      o.stop(t0 + dur + 0.02);
+    }
+
+    function sfxPlaceNormal(){ beep({freq: 520, dur: 0.06, type:"square", gain:0.12, slideTo: 420}); }
+    function sfxPlaceGreen(){ beep({freq: 700, dur: 0.07, type:"triangle", gain:0.14, slideTo: 520}); }
+    function sfxPlaceGold(){ beep({freq: 820, dur: 0.08, type:"triangle", gain:0.14, slideTo: 620}); }
+    function sfxStore(){ beep({freq: 360, dur: 0.07, type:"sine", gain:0.12, slideTo: 520}); }
+    function sfxSelectStored(){ beep({freq: 480, dur: 0.05, type:"sine", gain:0.10}); }
+    function sfxPause(){ beep({freq: 260, dur: 0.10, type:"square", gain:0.10, slideTo: 180}); }
+    function sfxResume(){ beep({freq: 220, dur: 0.10, type:"square", gain:0.10, slideTo: 320}); }
+    function sfxWin(){
+      beep({freq: 523, dur: 0.08, type:"triangle", gain:0.12});
+      setTimeout(()=>beep({freq: 659, dur: 0.08, type:"triangle", gain:0.12}), 90);
+      setTimeout(()=>beep({freq: 784, dur: 0.10, type:"triangle", gain:0.12}), 180);
+    }
+    function sfxLose(){
+      beep({freq: 300, dur: 0.10, type:"sawtooth", gain:0.10, slideTo: 160});
+      setTimeout(()=>beep({freq: 220, dur: 0.12, type:"sawtooth", gain:0.08, slideTo: 120}), 80);
+    }
+    function sfxBuy(){ beep({freq: 640, dur: 0.07, type:"triangle", gain:0.12, slideTo: 860}); }
+    function sfxNoMoney(){ beep({freq: 160, dur: 0.12, type:"square", gain:0.10, slideTo: 120}); }
+    function sfxOpenShop(){ beep({freq: 420, dur: 0.08, type:"triangle", gain:0.10, slideTo: 560}); }
+
+    const musicPattern = [72,null,74,null,76,null,79,null,76,null,74,null,72,null,67,null];
+    const bassPattern  = [48,null,48,null,50,null,50,null,45,null,45,null,43,null,43,null];
+
+    function scheduleMusicNote(midi, time, dur, isBass=false) {
+      if (!audio.musicOn) return;
+      if (midi == null) return;
+
+      const o = audio.ctx.createOscillator();
+      o.type = isBass ? "square" : "triangle";
+      o.frequency.setValueAtTime(midiToFreq(midi), time);
+
+      const g = audio.ctx.createGain();
+      const peak = isBass ? 0.055 : 0.045;
+      g.gain.setValueAtTime(0.0001, time);
+      g.gain.exponentialRampToValueAtTime(peak, time + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+
+      o.connect(g);
+      g.connect(audio.musicGain);
+
+      o.start(time);
+      o.stop(time + dur + 0.03);
+    }
+
+    function musicSchedulerTick() {
+      if (!audio.isMusicPlaying) return;
+      const now = audio.ctx.currentTime;
+
+      const secPerBeat = 60 / audio.bpm;
+      const stepDur = secPerBeat / 4;
+
+      while (audio.nextNoteTime < now + audio.scheduleAheadSec) {
+        const i = audio.step % musicPattern.length;
+        scheduleMusicNote(musicPattern[i], audio.nextNoteTime, stepDur * 0.95, false);
+        scheduleMusicNote(bassPattern[i],  audio.nextNoteTime, stepDur * 0.95, true);
+        audio.nextNoteTime += stepDur;
+        audio.step++;
+      }
+    }
+
+    function startMusic() {
+      ensureAudio();
+      if (!audio.musicOn) return;
+      if (audio.isMusicPlaying) return;
+      audio.isMusicPlaying = true;
+      audio.step = 0;
+      audio.nextNoteTime = audio.ctx.currentTime + 0.05;
+      audio.musicSchedulerId = setInterval(musicSchedulerTick, audio.lookaheadMs);
+    }
+    function stopMusic() {
+      audio.isMusicPlaying = false;
+      if (audio.musicSchedulerId) clearInterval(audio.musicSchedulerId);
+      audio.musicSchedulerId = null;
+    }
+
+    // =========================
+    // JUEGO + TIENDA
+    // =========================
+    const TokenType = { Normal: "Normal", Verde: "Verde", Dorado: "Dorado" };
 
     const state = {
       floor: 1,
@@ -324,25 +847,128 @@
       timeLeft: 90,
       timerId: null,
 
-      slots: [], // null => vacío, number => colocado
-      current: null, // { value, type }
-      stored: [], // hasta 3 tokens {value,type}
+      slots: [],
+      current: null,
+      stored: [],
       selectedStoredIndex: -1,
+      baseCurrent: null,
 
-      softRerollUsed: false,
       running: false,
+      paused: false,
+      shopOpen: false,
+
       infoHidden: false,
+
+      coins: 0,
+      rerollsLeft: 0,
+
+      mod: {
+        timeBonusPerFloor: 0,
+        coinBonusPerPlace: 0,
+        extraRerollsPerFloor: 0,
+        greenChanceBonus: 0,
+        goldChanceBonus: 0,
+      },
+
+      shopOffers: [],
     };
 
-    // Config de pisos (primeros fáciles)
     const floorConfigs = [
-      { size: 5,  min: 1, max: 30,  time: 90 },
-      { size: 6,  min: 1, max: 50,  time: 80 },
-      { size: 7,  min: 1, max: 80,  time: 75 },
-      { size: 8,  min: 1, max: 120, time: 70 },
-      { size: 9,  min: 1, max: 180, time: 65 },
-      { size: 10, min: 1, max: 250, time: 60 },
+      { size: 5,  min: 1, max: 30,  time: 90, baseRerolls: 1 },
+      { size: 6,  min: 1, max: 50,  time: 80, baseRerolls: 1 },
+      { size: 7,  min: 1, max: 80,  time: 75, baseRerolls: 1 },
+      { size: 8,  min: 1, max: 120, time: 70, baseRerolls: 1 },
+      { size: 9,  min: 1, max: 180, time: 65, baseRerolls: 1 },
+      { size: 10, min: 1, max: 250, time: 60, baseRerolls: 1 },
     ];
+
+    const shopPool = [
+      {
+        id: "gold_token",
+        name: "🟨 Comodín Dorado",
+        desc: "Añade un Dorado a tus guardados. Se coloca en cualquier casilla vacía.",
+        price: 6,
+        rarityWeight: 2,
+        kind: "token",
+        token: { value: 0, type: TokenType.Dorado },
+      },
+      {
+        id: "green_charm",
+        name: "🟩 Amuleto Verde",
+        desc: "+8% probabilidad de Verdes durante la run.",
+        price: 5,
+        rarityWeight: 3,
+        kind: "mod",
+        apply() { state.mod.greenChanceBonus += 8; },
+      },
+      {
+        id: "gold_stamp",
+        name: "🟨 Sello Dorado",
+        desc: "+4% probabilidad de Dorados durante la run.",
+        price: 4,
+        rarityWeight: 4,
+        kind: "mod",
+        apply() { state.mod.goldChanceBonus += 4; },
+      },
+      {
+        id: "time_voucher",
+        name: "⏱ Vale de Tiempo",
+        desc: "+10s al tiempo base de cada piso (toda la run).",
+        price: 5,
+        rarityWeight: 3,
+        kind: "mod",
+        apply() { state.mod.timeBonusPerFloor += 10; },
+      },
+      {
+        id: "coin_joker",
+        name: "🃏 Joker: Propina",
+        desc: "+1 moneda extra cada vez que colocas un número (toda la run).",
+        price: 7,
+        rarityWeight: 2,
+        kind: "mod",
+        apply() { state.mod.coinBonusPerPlace += 1; },
+      },
+      {
+        id: "reroll_pass",
+        name: "🔄 Pase de Reroll",
+        desc: "+1 reroll automático por piso (si un número no tiene hueco).",
+        price: 6,
+        rarityWeight: 3,
+        kind: "mod",
+        apply() { state.mod.extraRerollsPerFloor += 1; },
+      },
+      {
+        id: "cheap_gold",
+        name: "🟨 Dorado Barato",
+        desc: "Dorado con valor más bajo (≈50% del rango), pero se coloca en cualquier casilla vacía.",
+        price: 4,
+        rarityWeight: 5,
+        kind: "token",
+        token: { value: 0, type: TokenType.Dorado, cheap: true },
+      },
+    ];
+
+    function weightedPick(pool, takenIds) {
+      const candidates = pool.filter(it => !takenIds.has(it.id));
+      const total = candidates.reduce((acc, it) => acc + (it.rarityWeight || 1), 0);
+      let r = Math.random() * total;
+      for (const it of candidates) {
+        r -= (it.rarityWeight || 1);
+        if (r <= 0) return it;
+      }
+      return candidates[candidates.length - 1];
+    }
+    function generateShopOffers() {
+      const offers = [];
+      const taken = new Set();
+      const count = 4;
+      for (let i = 0; i < count; i++) {
+        const pick = weightedPick(shopPool, taken);
+        taken.add(pick.id);
+        offers.push({ ...pick, sold: false });
+      }
+      state.shopOffers = offers;
+    }
 
     // =========================
     // DOM refs
@@ -354,12 +980,17 @@
     const uiFloor = document.getElementById("uiFloor");
     const uiRange = document.getElementById("uiRange");
     const uiTime  = document.getElementById("uiTime");
+    const uiCoins = document.getElementById("uiCoins");
+
+    const coinFloat = document.getElementById("coinFloat");
+    const coinStat = document.getElementById("coinStat");
 
     const currentValueEl = document.getElementById("currentValue");
     const currentTypeEl  = document.getElementById("currentType");
 
     const btnStart = document.getElementById("btnStart");
     const btnStore = document.getElementById("btnStore");
+    const btnPause = document.getElementById("btnPause");
 
     const btnToggleInfo = document.getElementById("btnToggleInfo");
     const btnToggleInfoA = document.getElementById("btnToggleInfoA");
@@ -371,36 +1002,62 @@
     ];
     const uiStoredTag = document.getElementById("uiStoredTag");
 
-    // =========================
-    // Utilidades
-    // =========================
-    function randInt(a, b){
-      return Math.floor(Math.random() * (b - a + 1)) + a;
-    }
+    // overlays
+    const overlayMenu = document.getElementById("overlayMenu");
+    const overlayPause = document.getElementById("overlayPause");
+    const pauseTitle = document.getElementById("pauseTitle");
+    const pauseResume = document.getElementById("pauseResume");
+    const pauseRestart = document.getElementById("pauseRestart");
+    const pauseMenu = document.getElementById("pauseMenu");
 
+    const overlayShop = document.getElementById("overlayShop");
+    const shopCoinsEl = document.getElementById("shopCoins");
+    const shopListEl = document.getElementById("shopList");
+    const shopSummaryEl = document.getElementById("shopSummary");
+    const shopRerollBtn = document.getElementById("shopReroll");
+    const shopContinueBtn = document.getElementById("shopContinue");
+    const shopCoinPill = document.getElementById("shopCoinPill");
+
+    // menu options
+    const musicToggle = document.getElementById("musicToggle");
+    const sfxToggle = document.getElementById("sfxToggle");
+    const volSlider = document.getElementById("volSlider");
+
+    const musicToggle2 = document.getElementById("musicToggle2");
+    const sfxToggle2 = document.getElementById("sfxToggle2");
+    const volSlider2 = document.getElementById("volSlider2");
+
+    const menuPlay = document.getElementById("menuPlay");
+    const menuToggleInfo = document.getElementById("menuToggleInfo");
+
+    // =========================
+    // Util
+    // =========================
+    function randInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
     function formatTime(sec){
-      const m = Math.floor(sec / 60);
-      const s = sec % 60;
-      return String(m).padStart(2,"0") + ":" + String(s).padStart(2,"0");
+      const m=Math.floor(sec/60), s=sec%60;
+      return String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
     }
-
     function setMsg(text, color){
       msgEl.textContent = text || "";
       msgEl.style.color = color || "#111";
     }
-
     function tokenEmoji(type){
       if (type === TokenType.Verde) return "🟩";
+      if (type === TokenType.Dorado) return "🟨";
       return "⬜";
     }
-
     function tokenColor(type){
       if (type === TokenType.Verde) return "rgb(0, 196, 0)";
+      if (type === TokenType.Dorado) return "rgb(255, 230, 0)";
       return "#fff";
+    }
+    function inputBlocked(){
+      return !state.running || state.paused || state.shopOpen;
     }
 
     // =========================
-    // Toggle Info
+    // Info toggle
     // =========================
     function applyInfoVisibility(){
       if (state.infoHidden){
@@ -413,185 +1070,202 @@
         btnToggleInfoA.textContent = "Ocultar";
       }
     }
-    function toggleInfo(){
-      state.infoHidden = !state.infoHidden;
-      applyInfoVisibility();
-    }
+    function toggleInfo(){ state.infoHidden=!state.infoHidden; applyInfoVisibility(); }
 
     // =========================
-    // Tablero (UI)
+    // Board UI
     // =========================
     function buildBoard(){
-      tableroEl.innerHTML = "";
-      for (let i=0;i<10;i++){
-        const div = document.createElement("div");
-        div.className = "slot";
-        div.dataset.idx = String(i);
-
-        const h = document.createElement("div");
-        h.className = "num";
-        h.textContent = String(i+1);
-
-        div.appendChild(h);
-        div.addEventListener("click", () => onSlotClick(i));
+      tableroEl.innerHTML="";
+      for(let i=0;i<10;i++){
+        const div=document.createElement("div");
+        div.className="slot";
+        div.dataset.idx=String(i);
+        const n=document.createElement("div");
+        n.className="num";
+        n.textContent=String(i+1);
+        div.appendChild(n);
+        div.addEventListener("click", ()=>onSlotClick(i));
         tableroEl.appendChild(div);
       }
     }
 
     function paintBoard(){
-      const slotDivs = [...document.querySelectorAll(".slot")];
+      const slotDivs=[...document.querySelectorAll(".slot")];
+      slotDivs.forEach((el,i)=>{ el.style.display = (i<state.size) ? "flex" : "none"; });
 
-      slotDivs.forEach((el, i) => {
-        el.style.display = (i < state.size) ? "flex" : "none";
-      });
+      for(let i=0;i<state.size;i++){
+        const el=slotDivs[i];
+        const numEl=el.querySelector(".num");
+        const v=state.slots[i];
 
-      for (let i=0;i<state.size;i++){
-        const el = slotDivs[i];
-        const numEl = el.querySelector(".num");
-        const v = state.slots[i];
-
-        if (v == null){
-          numEl.textContent = String(i+1);
-          numEl.style.color = "var(--slotText)";
-          el.style.backgroundColor = "var(--slot)";
+        el.classList.remove("valid");
+        if (v==null){
+          numEl.textContent=String(i+1);
+          numEl.style.color="var(--slotText)";
+          el.style.backgroundColor="var(--slot)";
         } else {
-          numEl.textContent = String(v);
-          numEl.style.color = "rgb(0,0,0)";
-          el.style.backgroundColor = "var(--placed)";
+          numEl.textContent=String(v);
+          numEl.style.color="rgb(0,0,0)";
+          el.style.backgroundColor="var(--placed)";
         }
       }
     }
 
     function clearHighlights(){
-      const slotDivs = [...document.querySelectorAll(".slot")];
-      for (let i=0;i<state.size;i++){
-        if (state.slots[i] == null){
-          slotDivs[i].style.backgroundColor = "var(--slot)";
-        }
+      const slotDivs=[...document.querySelectorAll(".slot")];
+      for(let i=0;i<state.size;i++){
+        slotDivs[i].classList.remove("valid");
+        if(state.slots[i]==null) slotDivs[i].style.backgroundColor="var(--slot)";
       }
     }
 
     function highlightValid(indices){
-      clearHighlights();
-      const slotDivs = [...document.querySelectorAll(".slot")];
-      indices.forEach(i => {
-        if (i >= 0 && i < state.size && state.slots[i] == null){
-          slotDivs[i].style.backgroundColor = "var(--ok)";
+      const slotDivs=[...document.querySelectorAll(".slot")];
+      for(let i=0;i<state.size;i++) slotDivs[i].classList.remove("valid");
+      indices.forEach(i=>{
+        if(i>=0 && i<state.size && state.slots[i]==null){
+          slotDivs[i].classList.add("valid");
         }
       });
     }
 
+    function getSlotEl(idx){
+      return document.querySelector(`.slot[data-idx="${idx}"]`);
+    }
+
     // =========================
-    // Reglas de colocación
+    // Rules
     // =========================
     function getValidIndices(value){
       let guardado = state.size - 1;
-
-      for (let i=0;i<state.size;i++){
-        const v = state.slots[i];
-        if (v != null && v > value){
-          guardado = i;
-          break;
-        }
+      for(let i=0;i<state.size;i++){
+        const v=state.slots[i];
+        if(v!=null && v>value){ guardado=i; break; }
       }
-
-      const valid = [];
-      for (let j=guardado; j>=0; j--){
-        const v = state.slots[j];
-        if (v != null && v < value) break;
-        if (v == null) valid.push(j);
+      const valid=[];
+      for(let j=guardado;j>=0;j--){
+        const v=state.slots[j];
+        if(v!=null && v<value) break;
+        if(v==null) valid.push(j);
       }
       return valid;
     }
 
     function canPlace(idx, value){
-      if (idx < 0 || idx >= state.size) return false;
-      if (state.slots[idx] != null) return false;
+      if(idx<0 || idx>=state.size) return false;
+      if(state.slots[idx]!=null) return false;
       return getValidIndices(value).includes(idx);
     }
 
     function tryAutoFillSmaller(targetIdx, upperExclusive){
-      if (targetIdx < 0 || targetIdx >= state.size) return false;
-      if (state.slots[targetIdx] != null) return false;
+      if(targetIdx<0 || targetIdx>=state.size) return false;
+      if(state.slots[targetIdx]!=null) return false;
 
       let min = state.min;
-      for (let i = targetIdx - 1; i >= 0; i--){
-        if (state.slots[i] != null){
-          min = Math.max(min, state.slots[i] + 1);
-          break;
-        }
+      for(let i=targetIdx-1;i>=0;i--){
+        if(state.slots[i]!=null){ min=Math.max(min, state.slots[i]+1); break; }
       }
+      const max = Math.min(state.max, upperExclusive-1);
+      if(min>max) return false;
 
-      const max = Math.min(state.max, upperExclusive - 1);
-      if (min > max) return false;
-
-      for (let t=0; t<20; t++){
-        const candidate = randInt(min, max);
-        if (canPlace(targetIdx, candidate)){
-          state.slots[targetIdx] = candidate;
-          return true;
-        }
+      for(let t=0;t<20;t++){
+        const cand=randInt(min,max);
+        if(canPlace(targetIdx,cand)){ state.slots[targetIdx]=cand; return true; }
       }
-
-      if (canPlace(targetIdx, min)){
-        state.slots[targetIdx] = min;
-        return true;
-      }
-      if (canPlace(targetIdx, max)){
-        state.slots[targetIdx] = max;
-        return true;
-      }
+      if(canPlace(targetIdx,min)){ state.slots[targetIdx]=min; return true; }
+      if(canPlace(targetIdx,max)){ state.slots[targetIdx]=max; return true; }
       return false;
     }
 
     // =========================
-    // Números / tokens
+    // Currency / HUD + dopamine
     // =========================
+    function coinFx(amount){
+      // float + bounce
+      coinFloat.textContent = `+${amount}🪙`;
+      restartClass(coinFloat, "show");
+      addTempClass(coinStat, "coinBounce", 260);
+      // burst from coin stat
+      burstFromEl(coinStat, 10, 0.8);
+    }
+
+    function addCoins(amount){
+      state.coins = Math.max(0, state.coins + amount);
+      uiCoins.textContent = String(state.coins);
+      coinFx(amount);
+    }
+
+    // =========================
+    // Tokens
+    // =========================
+    function paintCurrentToken(){
+      if(!state.current){
+        currentValueEl.textContent="—";
+        currentTypeEl.textContent="—";
+        document.getElementById("currentToken").style.background="#fff";
+        return;
+      }
+      currentValueEl.textContent=String(state.current.value);
+      currentTypeEl.textContent=`${tokenEmoji(state.current.type)} ${state.current.type}`;
+      document.getElementById("currentToken").style.background = tokenColor(state.current.type);
+      addTempClass(document.getElementById("currentToken"), "pop", 220);
+    }
+
     function rollToken(){
-      const r = randInt(1, 100);
-      const type = (r <= 12) ? TokenType.Verde : TokenType.Normal;
+      const greenChance = Math.min(60, 12 + state.mod.greenChanceBonus);
+      const goldChance  = Math.min(25,  2 + state.mod.goldChanceBonus);
+      const r = Math.random() * 100;
+
+      let type = TokenType.Normal;
+      if (r < goldChance) type = TokenType.Dorado;
+      else if (r < goldChance + greenChance) type = TokenType.Verde;
+
       const value = randInt(state.min, state.max);
       state.current = { value, type };
+
       state.selectedStoredIndex = -1;
+      state.baseCurrent = null;
 
       paintCurrentToken();
       updateStoreUI();
       afterTokenChanged();
     }
 
-    function paintCurrentToken(){
-      if (!state.current){
-        currentValueEl.textContent = "—";
-        currentTypeEl.textContent  = "—";
+    function afterTokenChanged(){
+      if(!state.running || state.paused || state.shopOpen) return;
+
+      if (state.current.type === TokenType.Dorado) {
+        const all = [];
+        for (let i=0;i<state.size;i++) if (state.slots[i]==null) all.push(i);
+        highlightValid(all);
+        setMsg("");
         return;
       }
-      currentValueEl.textContent = String(state.current.value);
-      currentTypeEl.textContent  = `${tokenEmoji(state.current.type)} ${state.current.type}`;
-      document.getElementById("currentToken").style.background = tokenColor(state.current.type);
-    }
 
-    function afterTokenChanged(){
-      if (!state.running) return;
-
-      const valid = getValidIndices(state.current.value);
+      const valid=getValidIndices(state.current.value);
       highlightValid(valid);
 
       const canStore = state.stored.length < 3;
-      const anyStoredFits = state.stored.some(tok => getValidIndices(tok.value).length > 0);
+      const anyStoredFits = state.stored.some(tok => {
+        if (tok.type === TokenType.Dorado) return state.slots.some(v => v==null);
+        return getValidIndices(tok.value).length > 0;
+      });
 
-      if (valid.length === 0){
-        if (!state.softRerollUsed){
-          state.softRerollUsed = true;
-          setMsg(`No había hueco para ${state.current.value}. Reroll gratis del piso 😅`, "#0b6d00");
+      if(valid.length===0){
+        if (state.rerollsLeft > 0) {
+          state.rerollsLeft--;
+          toast(`🔄 Reroll automático (${state.rerollsLeft} restantes)`);
+          shakeGame();
           rollToken();
           return;
         }
 
-        if (!canStore && !anyStoredFits){
-          gameOver(`Te quedaste sin huecos posibles para ${state.current.value} y ningún guardado encaja.`);
+        if(!canStore && !anyStoredFits){
+          gameOver(`Te quedaste sin huecos para ${state.current.value} y ningún guardado encaja.`);
           return;
         } else {
-          setMsg(`No hay hueco para ${state.current.value}. Guarda el número o usa un guardado que sí encaje.`, "#8a4b00");
+          setMsg(`No hay hueco para ${state.current.value}. Guarda o usa un guardado que encaje.`, "#8a4b00");
         }
       } else {
         setMsg("");
@@ -599,103 +1273,138 @@
     }
 
     // =========================
-    // Guardados
+    // Stored
     // =========================
     function updateStoreUI(){
-      btnStore.textContent = `Guardar (${state.stored.length}/3)`;
-      btnStore.disabled = !state.running || !state.current || state.stored.length >= 3;
-
+      btnStore.textContent=`Guardar (${state.stored.length}/3)`;
+      btnStore.disabled = inputBlocked() || !state.current || state.stored.length>=3;
       uiStoredTag.textContent = `${state.stored.length}/3`;
 
-      for (let i=0;i<3;i++){
-        const el = storedEls[i];
+      for(let i=0;i<3;i++){
+        const el=storedEls[i];
         el.classList.remove("selected");
 
-        const vEl = el.querySelector(".v");
-        const tEl = el.querySelector(".t");
+        const vEl=el.querySelector(".v");
+        const tEl=el.querySelector(".t");
 
-        if (state.stored[i]){
-          vEl.textContent = String(state.stored[i].value);
-          tEl.textContent = `${tokenEmoji(state.stored[i].type)} ${state.stored[i].type}`;
-          el.style.background = tokenColor(state.stored[i].type);
-          el.style.opacity = "1";
+        if(state.stored[i]){
+          vEl.textContent=String(state.stored[i].value);
+          tEl.textContent=`${tokenEmoji(state.stored[i].type)} ${state.stored[i].type}`;
+          el.style.background=tokenColor(state.stored[i].type);
+          el.style.opacity="1";
         } else {
-          vEl.textContent = "—";
-          tEl.textContent = "Vacío";
-          el.style.background = "#fff";
-          el.style.opacity = "0.9";
+          vEl.textContent="—";
+          tEl.textContent="Vacío";
+          el.style.background="#fff";
+          el.style.opacity="0.9";
         }
 
-        if (state.selectedStoredIndex === i){
-          el.classList.add("selected");
-        }
+        if(state.selectedStoredIndex===i) el.classList.add("selected");
       }
     }
 
     function storeCurrent(){
-      if (!state.running || !state.current) return;
-      if (state.stored.length >= 3) return;
+      if(inputBlocked() || !state.current) return;
+      if(state.stored.length>=3) return;
 
       state.stored.push({ ...state.current });
-      state.selectedStoredIndex = -1;
+      state.selectedStoredIndex=-1;
+      state.baseCurrent=null;
 
       updateStoreUI();
+      sfxStore();
+      burstFromEl(btnStore, 16, 0.9);
+      addTempClass(btnStore, "pop", 220);
+      toast("📦 Guardado");
       rollToken();
     }
 
     function selectStored(i){
-      if (!state.running) return;
-      if (!state.stored[i]) return;
+      if(inputBlocked()) return;
+      if(!state.stored[i]) return;
 
-      if (state.selectedStoredIndex === i){
+      if (state.selectedStoredIndex === i) {
         state.selectedStoredIndex = -1;
-        // volvemos al número actual (se queda como estaba)
-        // no hacemos nada más
+        if (state.baseCurrent) state.current = { ...state.baseCurrent };
+        state.baseCurrent = null;
       } else {
+        if (state.selectedStoredIndex === -1) state.baseCurrent = state.current ? { ...state.current } : null;
         state.selectedStoredIndex = i;
         state.current = { ...state.stored[i] };
       }
 
+      sfxSelectStored();
+      addTempClass(storedEls[i], "pop", 220);
       paintCurrentToken();
       updateStoreUI();
       afterTokenChanged();
     }
 
     function consumeSelectedStoredIfAny(){
-      if (state.selectedStoredIndex === -1) return;
+      if(state.selectedStoredIndex===-1) return;
       state.stored.splice(state.selectedStoredIndex, 1);
-      state.selectedStoredIndex = -1;
+      state.selectedStoredIndex=-1;
+      state.baseCurrent = null;
       updateStoreUI();
     }
 
     // =========================
-    // Click en slot
+    // Click slot (placement effects)
     // =========================
     function onSlotClick(idx){
-      if (!state.running || !state.current) return;
+      if(inputBlocked() || !state.current) return;
 
-      const value = state.current.value;
-      const valid = getValidIndices(value);
-      if (!valid.includes(idx)) return;
+      const value=state.current.value;
+      const type=state.current.type;
 
-      state.slots[idx] = value;
+      if (type === TokenType.Dorado) {
+        if (state.slots[idx] != null) return;
+      } else {
+        const valid=getValidIndices(value);
+        if(!valid.includes(idx)) return;
+      }
+
+      state.slots[idx]=value;
       consumeSelectedStoredIfAny();
 
-      if (state.current.type === TokenType.Verde){
-        const target = idx - 1;
-        const ok = tryAutoFillSmaller(target, value);
-        if (ok){
+      const slotEl = getSlotEl(idx);
+      addTempClass(slotEl, "pop", 220);
+
+      // coins for placement
+      addCoins(1 + state.mod.coinBonusPerPlace);
+
+      if(type===TokenType.Verde){
+        sfxPlaceGreen();
+        addTempClass(slotEl, "flash-green", 360);
+        burstFromEl(slotEl, 18, 1);
+        const target=idx-1;
+        const ok=tryAutoFillSmaller(target, value);
+        if(ok){
+          addCoins(1 + state.mod.coinBonusPerPlace);
+          const targetEl = getSlotEl(target);
+          addTempClass(targetEl, "pop", 220);
+          addTempClass(targetEl, "flash-green", 360);
+          burstFromEl(targetEl, 14, 0.9);
+          toast("🟩 Combo!");
           setMsg(`🟩 Colocaste ${value} y autollenaste la casilla ${target+1}.`, "#0b6d00");
         } else {
           setMsg(`🟩 Colocaste ${value}, pero no se pudo autollenar la casilla anterior.`, "#255f2a");
         }
+      } else if (type===TokenType.Dorado){
+        sfxPlaceGold();
+        addTempClass(slotEl, "flash-gold", 360);
+        burstFromEl(slotEl, 22, 1.1);
+        toast("🟨 Wild!");
+        setMsg(`🟨 Dorado colocado en casilla ${idx+1}.`, "#6a5b00");
       } else {
+        sfxPlaceNormal();
+        burstFromEl(slotEl, 10, 0.7);
         setMsg("");
       }
 
       paintBoard();
 
-      if (state.slots.every(v => v != null)){
+      if(state.slots.every(v=>v!=null)){
         floorClear();
         return;
       }
@@ -704,98 +1413,452 @@
     }
 
     // =========================
-    // Pisos / timer / start / gameover
+    // Floors / Timer
     // =========================
     function applyFloorConfig(){
-      const cfg = floorConfigs[Math.min(state.floor-1, floorConfigs.length-1)];
-      state.size = cfg.size;
-      state.min = cfg.min;
-      state.max = cfg.max;
-      state.timeLeft = cfg.time;
-      state.softRerollUsed = false;
+      const cfg=floorConfigs[Math.min(state.floor-1, floorConfigs.length-1)];
+      state.size=cfg.size;
+      state.min=cfg.min;
+      state.max=cfg.max;
+      state.timeLeft=cfg.time + state.mod.timeBonusPerFloor;
+      state.rerollsLeft = cfg.baseRerolls + state.mod.extraRerollsPerFloor;
 
-      uiFloor.textContent = String(state.floor);
-      uiRange.textContent = `${state.min}–${state.max}`;
-      uiTime.textContent = formatTime(state.timeLeft);
+      uiFloor.textContent=String(state.floor);
+      uiRange.textContent=`${state.min}–${state.max}`;
+      uiTime.textContent=formatTime(state.timeLeft);
 
-      state.slots = Array(state.size).fill(null);
-      state.current = null;
-      state.selectedStoredIndex = -1;
+      state.slots=Array(state.size).fill(null);
+      state.current=null;
+      state.selectedStoredIndex=-1;
+      state.baseCurrent=null;
 
       paintBoard();
       clearHighlights();
       paintCurrentToken();
+      updateStoreUI();
     }
 
     function startTimer(){
       stopTimer();
-      state.timerId = setInterval(() => {
+      state.timerId=setInterval(()=>{
+        if(!state.running || state.paused || state.shopOpen) return;
         state.timeLeft--;
-        uiTime.textContent = formatTime(Math.max(0, state.timeLeft));
-        if (state.timeLeft <= 0){
+        uiTime.textContent=formatTime(Math.max(0,state.timeLeft));
+        if(state.timeLeft<=0){
           gameOver("Se acabó el tiempo.");
         }
       }, 1000);
     }
 
     function stopTimer(){
-      if (state.timerId){
-        clearInterval(state.timerId);
-        state.timerId = null;
-      }
+      if(state.timerId){ clearInterval(state.timerId); state.timerId=null; }
     }
 
-    function startRun(){
-      state.running = true;
-      state.floor = 1;
-      state.stored = [];
-      state.selectedStoredIndex = -1;
+    async function startRun(){
+      await resumeAudioContext();
+
+      state.running=true;
+      state.paused=false;
+      state.shopOpen=false;
+
+      state.floor=1;
+      state.coins=0;
+      uiCoins.textContent="0";
+
+      state.stored=[];
+      state.selectedStoredIndex=-1;
+      state.baseCurrent=null;
+
+      state.mod = {
+        timeBonusPerFloor: 0,
+        coinBonusPerPlace: 0,
+        extraRerollsPerFloor: 0,
+        greenChanceBonus: 0,
+        goldChanceBonus: 0,
+      };
 
       setMsg("");
-      btnStart.disabled = true;
+      btnStart.disabled=true;
 
       applyFloorConfig();
-      updateStoreUI();
+      startTimer();
+      rollToken();
+
+      toast("🔥 Run empezada");
+      burstFromEl(document.getElementById("topbar"), 40, 1.0);
+
+      if (audio.musicOn) startMusic();
+    }
+
+    // =========================
+    // SHOP FLOW
+    // =========================
+    function shopSummaryText(){
+      const parts = [];
+      if (state.mod.timeBonusPerFloor) parts.push(`⏱ +${state.mod.timeBonusPerFloor}s/piso`);
+      if (state.mod.coinBonusPerPlace) parts.push(`🪙 +${state.mod.coinBonusPerPlace}/colocación`);
+      if (state.mod.extraRerollsPerFloor) parts.push(`🔄 +${state.mod.extraRerollsPerFloor} reroll/piso`);
+      if (state.mod.greenChanceBonus) parts.push(`🟩 +${state.mod.greenChanceBonus}% verde`);
+      if (state.mod.goldChanceBonus) parts.push(`🟨 +${state.mod.goldChanceBonus}% dorado`);
+      return parts.length ? `Mejoras activas: ${parts.join(" · ")}` : "Mejoras activas: (ninguna todavía)";
+    }
+
+    function renderShop(){
+      shopCoinsEl.textContent = String(state.coins);
+      shopSummaryEl.textContent = shopSummaryText();
+
+      shopRerollBtn.disabled = state.coins < 2;
+
+      shopListEl.innerHTML = "";
+      state.shopOffers.forEach((it, idx) => {
+        const wrap = document.createElement("div");
+        wrap.className = "shopItem" + (it.sold ? " sold" : "");
+        wrap.dataset.idx = String(idx);
+
+        const left = document.createElement("div");
+        left.className = "shopLeft";
+        const h = document.createElement("h3");
+        h.textContent = it.name;
+        const p = document.createElement("p");
+        p.textContent = it.desc;
+
+        const price = document.createElement("div");
+        price.className = "price";
+        price.textContent = `Precio: ${it.price}🪙`;
+
+        left.appendChild(h);
+        left.appendChild(p);
+        left.appendChild(price);
+
+        const right = document.createElement("div");
+        right.className = "shopRight";
+
+        const buy = document.createElement("button");
+        buy.textContent = it.sold ? "Comprado" : "Comprar";
+        buy.disabled = it.sold || state.coins < it.price || (it.kind === "token" && state.stored.length >= 3);
+        if (it.kind === "token" && state.stored.length >= 3 && !it.sold) {
+          buy.textContent = "Guardados llenos";
+        }
+        buy.style.background = it.sold ? "#ddd" : "#ffe600";
+
+        buy.addEventListener("click", async () => {
+          await resumeAudioContext();
+          buyShopItem(idx, wrap);
+        });
+
+        right.appendChild(buy);
+
+        wrap.appendChild(left);
+        wrap.appendChild(right);
+        shopListEl.appendChild(wrap);
+      });
+    }
+
+    function openShop(){
+      state.shopOpen = true;
+      stopTimer();
+      clearHighlights();
+      sfxOpenShop();
+
+      generateShopOffers();
+      renderShop();
+
+      overlayShop.classList.remove("hidden");
+      overlayShop.setAttribute("aria-hidden", "false");
+
+      toast("🛒 Tienda!");
+      burstFromEl(shopCoinPill, 26, 1.05);
+      shakeGame();
+    }
+
+    function closeShop(){
+      overlayShop.classList.add("hidden");
+      overlayShop.setAttribute("aria-hidden", "true");
+      state.shopOpen = false;
+    }
+
+    function buyShopItem(idx, cardEl){
+      const it = state.shopOffers[idx];
+      if (!it || it.sold) return;
+
+      if (state.coins < it.price) {
+        sfxNoMoney();
+        addTempClass(cardEl, "shake", 360);
+        toast("💸 No tienes monedas");
+        return;
+      }
+      if (it.kind === "token" && state.stored.length >= 3) {
+        sfxNoMoney();
+        addTempClass(cardEl, "shake", 360);
+        toast("📦 Guardados llenos");
+        return;
+      }
+
+      // pay
+      state.coins -= it.price;
+      uiCoins.textContent = String(state.coins);
+
+      // dopamine: bounce coin pill and burst
+      addTempClass(shopCoinPill, "bounce", 260);
+      burstFromEl(shopCoinPill, 14, 0.9);
+
+      if (it.kind === "mod") {
+        it.apply?.();
+        toast("✅ Mejora comprada");
+      } else if (it.kind === "token") {
+        const cfg = floorConfigs[Math.min(state.floor, floorConfigs.length-1)];
+        const nextMin = cfg.min;
+        const nextMax = cfg.max;
+        let v;
+        if (it.token?.cheap) v = randInt(nextMin, Math.max(nextMin, Math.floor(nextMax * 0.5)));
+        else v = randInt(nextMin, nextMax);
+
+        state.stored.push({ value: v, type: TokenType.Dorado });
+        updateStoreUI();
+        toast("🟨 Dorado añadido");
+      }
+
+      it.sold = true;
+      sfxBuy();
+
+      addTempClass(cardEl, "boughtFx", 420);
+      burstFromEl(cardEl, 24, 1.05);
+
+      // small coin confetti
+      spawnBurst(window.innerWidth * 0.5, window.innerHeight * 0.35, 22, 1);
+
+      renderShop();
+      shopSummaryEl.textContent = shopSummaryText();
+    }
+
+    function rerollShopOffers(){
+      if (state.coins < 2) {
+        sfxNoMoney();
+        toast("💸 No tienes para reroll");
+        addTempClass(shopCoinPill, "bounce", 260);
+        return;
+      }
+      state.coins -= 2;
+      uiCoins.textContent = String(state.coins);
+
+      generateShopOffers();
+      sfxBuy();
+      toast("🔄 Nuevas ofertas");
+      burstFromEl(shopRerollBtn, 18, 0.9);
+      renderShop();
+    }
+
+    function continueAfterShop(){
+      closeShop();
+      toast("➡ Continuar");
+      state.floor++;
+      applyFloorConfig();
       startTimer();
       rollToken();
     }
 
+    // =========================
+    // Floor clear / game over
+    // =========================
     function floorClear(){
       stopTimer();
       clearHighlights();
-      setMsg(`✅ Piso ${state.floor} completado. Siguiente piso...`, "#0b6d00");
+      sfxWin();
 
-      setTimeout(() => {
-        state.floor++;
-        applyFloorConfig();
-        updateStoreUI();
-        startTimer();
-        rollToken();
-      }, 900);
+      // Completion bonus
+      addCoins(4);
+
+      toast(`🏁 Piso ${state.floor} completado!`);
+      shakeGame();
+
+      // Big confetti burst from topbar center
+      burstFromEl(document.getElementById("topbar"), 120, 1.4);
+      spawnBurst(window.innerWidth * 0.5, 120, 120, 1.3);
+
+      setMsg(`✅ Piso ${state.floor} completado. Abres la tienda (bonus +4🪙).`, "#0b6d00");
+      openShop();
     }
 
     function gameOver(reason){
-      state.running = false;
+      state.running=false;
+      state.paused=false;
+      state.shopOpen=false;
       stopTimer();
       clearHighlights();
+      stopMusic();
+      sfxLose();
 
-      document.getElementById("currentToken").style.background = "var(--danger)";
+      shakeGame();
+      toast("💀 Game Over");
+      spawnBurst(window.innerWidth * 0.5, window.innerHeight * 0.35, 60, 0.9);
+
+      document.getElementById("currentToken").style.background="var(--danger)";
       setMsg(`❌ Game Over: ${reason}`, "rgb(200,0,0)");
+      btnStart.disabled=false;
+      btnStore.disabled=true;
 
-      btnStart.disabled = false;
-      btnStore.disabled = true;
+      showPauseMenu("Game Over", { canResume: false });
+    }
+
+    // =========================
+    // MENÚ PRINCIPAL / PAUSA
+    // =========================
+    function showMainMenu(){
+      overlayMenu.classList.remove("hidden");
+      overlayPause.classList.add("hidden");
+      overlayPause.setAttribute("aria-hidden", "true");
+
+      overlayShop.classList.add("hidden");
+      overlayShop.setAttribute("aria-hidden", "true");
+
+      state.running=false;
+      state.paused=false;
+      state.shopOpen=false;
+      stopTimer();
+      stopMusic();
+
+      btnStart.disabled=false;
+      btnStore.disabled=true;
+      clearHighlights();
+    }
+
+    function showPauseMenu(title="Pausa", { canResume=true } = {}){
+      pauseTitle.textContent = title;
+      pauseResume.style.display = canResume ? "inline-block" : "none";
+      overlayPause.classList.remove("hidden");
+      overlayPause.setAttribute("aria-hidden", "false");
+    }
+
+    function hidePauseMenu(){
+      overlayPause.classList.add("hidden");
+      overlayPause.setAttribute("aria-hidden", "true");
+    }
+
+    async function pauseGame(){
+      if(!state.running || state.paused || state.shopOpen) return;
+      await resumeAudioContext();
+      state.paused=true;
+      stopMusic();
+      sfxPause();
+      showPauseMenu("Pausa", { canResume: true });
+      clearHighlights();
+      updateStoreUI();
+      toast("⏸ Pausa");
+    }
+
+    async function resumeGame(){
+      if(!state.running || !state.paused) return;
+      await resumeAudioContext();
+      state.paused=false;
+      sfxResume();
+      hidePauseMenu();
+      if (audio.musicOn) startMusic();
+      updateStoreUI();
+      afterTokenChanged();
+      toast("▶ Reanudar");
+    }
+
+    async function restartRun(){
+      hidePauseMenu();
+      overlayMenu.classList.add("hidden");
+      await startRun();
+    }
+
+    // =========================
+    // OPCIONES (sync)
+    // =========================
+    function syncOptionsToUI(){
+      musicToggle.checked = audio.musicOn;
+      sfxToggle.checked = audio.sfxOn;
+      volSlider.value = String(Math.round(audio.vol * 100));
+
+      musicToggle2.checked = audio.musicOn;
+      sfxToggle2.checked = audio.sfxOn;
+      volSlider2.value = String(Math.round(audio.vol * 100));
+    }
+
+    function applyOptionsFromUI({music, sfx, vol}){
+      setMusicOn(music);
+      setSfxOn(sfx);
+      setVolume01(vol);
+      syncOptionsToUI();
     }
 
     // =========================
     // Eventos UI
     // =========================
-    btnStart.addEventListener("click", startRun);
-    btnStore.addEventListener("click", storeCurrent);
+    btnStart.addEventListener("click", async () => {
+      overlayMenu.classList.add("hidden");
+      await startRun();
+    });
 
-    storedEls.forEach((el, i) => el.addEventListener("click", () => selectStored(i)));
+    btnStore.addEventListener("click", async () => {
+      await resumeAudioContext();
+      storeCurrent();
+    });
+
+    btnPause.addEventListener("click", async () => { await pauseGame(); });
+
+    storedEls.forEach((el,i)=>el.addEventListener("click", async () => {
+      await resumeAudioContext();
+      selectStored(i);
+    }));
 
     btnToggleInfo.addEventListener("click", toggleInfo);
     btnToggleInfoA.addEventListener("click", toggleInfo);
+
+    menuPlay.addEventListener("click", async () => {
+      overlayMenu.classList.add("hidden");
+      await startRun();
+    });
+    menuToggleInfo.addEventListener("click", toggleInfo);
+
+    pauseResume.addEventListener("click", resumeGame);
+    pauseRestart.addEventListener("click", restartRun);
+    pauseMenu.addEventListener("click", showMainMenu);
+
+    shopRerollBtn.addEventListener("click", async () => {
+      await resumeAudioContext();
+      rerollShopOffers();
+    });
+    shopContinueBtn.addEventListener("click", () => {
+      continueAfterShop();
+    });
+
+    musicToggle.addEventListener("change", async () => {
+      await resumeAudioContext();
+      applyOptionsFromUI({ music: musicToggle.checked, sfx: audio.sfxOn, vol: audio.vol });
+    });
+    sfxToggle.addEventListener("change", async () => {
+      await resumeAudioContext();
+      applyOptionsFromUI({ music: audio.musicOn, sfx: sfxToggle.checked, vol: audio.vol });
+    });
+    volSlider.addEventListener("input", async () => {
+      await resumeAudioContext();
+      applyOptionsFromUI({ music: audio.musicOn, sfx: audio.sfxOn, vol: Number(volSlider.value)/100 });
+    });
+
+    musicToggle2.addEventListener("change", async () => {
+      await resumeAudioContext();
+      applyOptionsFromUI({ music: musicToggle2.checked, sfx: audio.sfxOn, vol: audio.vol });
+    });
+    sfxToggle2.addEventListener("change", async () => {
+      await resumeAudioContext();
+      applyOptionsFromUI({ music: audio.musicOn, sfx: sfxToggle2.checked, vol: audio.vol });
+    });
+    volSlider2.addEventListener("input", async () => {
+      await resumeAudioContext();
+      applyOptionsFromUI({ music: audio.musicOn, sfx: audio.sfxOn, vol: Number(volSlider2.value)/100 });
+    });
+
+    window.addEventListener("keydown", async (e) => {
+      if (e.key === "Escape") {
+        if (!overlayMenu.classList.contains("hidden")) return;
+        if (state.shopOpen) return;
+        if (state.running && !state.paused) await pauseGame();
+        else if (state.running && state.paused) await resumeGame();
+      }
+    });
 
     // =========================
     // Init
@@ -804,7 +1867,10 @@
     applyFloorConfig();
     updateStoreUI();
     applyInfoVisibility();
-    setMsg("Pulsa ▶ Empezar run para jugar.", "#111");
+    setMsg("Pulsa ▶ Empezar run para jugar (o usa el menú).", "#111");
+    syncOptionsToUI();
+    overlayMenu.classList.remove("hidden");
+    uiCoins.textContent = "0";
   </script>
 </body>
 </html>
