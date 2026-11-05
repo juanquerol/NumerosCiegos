@@ -70,6 +70,20 @@
       ice:     {icon:'🧊', name:'Hielo: bloquea guardados', color:'text-cyan-300', weight:6},
       miracle: {icon:'🌟', name:'MILAGRO LEGENDARIO', color:'text-fuchsia-300', weight:0}
     };
+    const TYPE_HELP = {
+      normal: 'Número normal. Solo encaja entre los valores que ya estén colocados a su izquierda y derecha.',
+      green: 'Semilla: al colocarlo, intenta completar el hueco inmediatamente anterior con un número menor.',
+      blue: 'Espejo: al colocarlo, intenta completar el hueco inmediatamente siguiente con un número mayor.',
+      purple: 'Reloj: si lo colocas, recuperas 12 segundos de partida.',
+      pink: 'Corazón: ganas 3 monedas y el próximo número que salga será especial.',
+      gold: 'Comodín: ocupa cualquier hueco libre, sin valor numérico y sin alterar el orden.',
+      rainbow: 'Arcoíris: ocupa este hueco y otro adyacente libre si está disponible.',
+      bomb: 'Bomba: debes colocarla antes de que termine su mecha, o guardarla para pausarla. Caduca tras tres pisos contando el actual.',
+      curse: 'Maldito: pierdes 10 segundos al colocarlo, pero obtienes 160 puntos extra.',
+      ice: 'Hielo: al colocarlo bloqueas temporalmente el acceso a guardados durante dos colocaciones.',
+      miracle: 'Milagro legendario: completa todas las casillas restantes sin alterar el orden. Probabilidad natural muy baja.',
+      auto: 'Casilla completada automáticamente por un poder especial.'
+    };
     const FLOOR = [
       {n:5,max:50,sec:100,rerolls:2}, {n:6,max:80,sec:95,rerolls:2},
       {n:7,max:120,sec:90,rerolls:1}, {n:8,max:170,sec:85,rerolls:1},
@@ -117,6 +131,150 @@
       streak:0, maxStreak:0, announcedRecord:false, milestones:new Set(),
       score:0, completedFloors:0, scoredSlots:new Set(), resultSaved:false, lastResult:null, lastFloorAward:0
     };
+    // Ayudas accesibles: un único popup para ratón/teclado y un icono i en pantallas táctiles.
+    function setHelp(el,title,description){
+      el.dataset.helpTitle=title;
+      el.dataset.helpText=description;
+    }
+    const tooltip=$('helpTooltip');
+    let helpAnchor=null,helpPinned=false;
+    function placeHelp(el){
+      const r=el.getBoundingClientRect(),w=Math.min(280,innerWidth-24),h=tooltip.offsetHeight||80;
+      tooltip.style.width=w+'px';
+      tooltip.style.left=Math.max(12,Math.min(innerWidth-w-12,r.left+r.width/2-w/2))+'px';
+      let y=r.bottom+11;
+      if(y+h>innerHeight-12)y=r.top-h-11;
+      tooltip.style.top=Math.max(10,Math.min(innerHeight-h-10,y))+'px';
+    }
+    function showHelp(el,pinned=false){
+      if(tutorial.active||!el?.dataset?.helpTitle)return;
+      helpAnchor=el;helpPinned=pinned;
+      $('helpTitle').textContent=el.dataset.helpTitle;
+      $('helpText').textContent=el.dataset.helpText;
+      tooltip.classList.remove('hidden');tooltip.setAttribute('aria-hidden','false');
+      placeHelp(el);
+    }
+    function hideHelp(){
+      helpAnchor=null;helpPinned=false;tooltip.classList.add('hidden');tooltip.setAttribute('aria-hidden','true');
+    }
+    document.addEventListener('pointerover',e=>{
+      if(e.pointerType==='touch'||helpPinned||tutorial.active)return;
+      const el=e.target.closest?.('[data-help-title]');
+      if(el&&el!==helpAnchor)showHelp(el);
+    });
+    document.addEventListener('pointerout',e=>{
+      if(helpPinned||!helpAnchor)return;
+      if(helpAnchor.contains(e.relatedTarget))return;
+      hideHelp();
+    });
+    document.addEventListener('focusin',e=>{
+      if(e.target.matches?.('[data-help-title]')&&!tutorial.active)showHelp(e.target);
+    });
+    document.addEventListener('focusout',e=>{
+      if(helpPinned)return;
+      if(helpAnchor===e.target)hideHelp();
+    });
+    document.addEventListener('click',e=>{
+      const trigger=e.target.closest?.('[data-help-toggle]');
+      if(trigger){
+        e.preventDefault();e.stopPropagation();
+        const el=trigger.dataset.helpToggle==='parent'?trigger.closest('.shop-card'):$(trigger.dataset.helpToggle);
+        if(helpPinned&&helpAnchor===el)hideHelp();else showHelp(el,true);
+      }else if(helpPinned)hideHelp();
+    });
+    addEventListener('scroll',()=>{if(helpAnchor&&!tooltip.classList.contains('hidden'))placeHelp(helpAnchor);},{passive:true});
+    addEventListener('resize',()=>{if(helpAnchor)placeHelp(helpAnchor);});
+
+    const TUTORIAL_KEY='sotiorno_tutorial_v2';
+    let tutorialSeen={game:false,shop:false};
+    try{tutorialSeen={...tutorialSeen,...JSON.parse(localStorage.getItem(TUTORIAL_KEY)||'{}')};}catch(_){}
+    const tutorial={active:false,kind:null,index:0};
+    const TUTORIAL_STEPS={
+      game:[
+        {target:'currentCard',title:'Este es tu número',text:'Cada turno recibes un número al azar. Aquí ves su valor, su tipo y qué efecto tiene. Antes de colocarlo, piensa dónde debe ir.'},
+        {target:'board',title:'Ordena de menor a mayor',text:'El tablero se lee de arriba abajo. Los números pequeños van arriba y los grandes abajo. No se pueden intercambiar los que ya has colocado.'},
+        {target:'board',title:'Las casillas verdes te guían',text:'Solo puedes colocar el número en un hueco iluminado en verde. Si el tablero se llena, superas el piso y recibes puntos y monedas.'},
+        {target:'storeButton',title:'Guardar te da otra oportunidad',text:'¿No te convence el número? Guárdalo para más tarde. Empiezas con un espacio y podrás comprar otros dos en la tienda.'},
+        {target:'rerollButton',title:'Cambiar el número',text:'El dado descarta tu número actual y saca otro. Tienes pocos cambios por piso: úsalos cuando no encuentres un buen hueco.'},
+        {target:'currentCard',title:'Presta atención a los especiales',text:'Algunos números dan tiempo, monedas o rellenan otros huecos. Pasa el ratón por el número para ver su efecto, o pulsa la i si juegas en móvil.'},
+        {target:'timeUI',title:'El tiempo es limitado',text:'El reloj corre mientras juegas. Encadena colocaciones para aumentar tu multiplicador y consigue monedas para las mejoras de la tienda.'},
+        {target:'board',title:'Ahora te toca',text:'Coloca tu número en uno de los huecos verdes. Al completar todas las casillas llegarás a una tienda: también te enseñaremos a usarla.'}
+      ],
+      shop:[
+        {target:'shopCards',title:'Has llegado a la tienda',text:'Después de cada piso puedes gastar las monedas que hayas ganado. Las ofertas incluyen números especiales, herramientas y reliquias.'},
+        {target:'buyCapacityButton',title:'Amplía tus guardados',text:'Empiezas con un espacio de guardado. Puedes comprar el segundo por 8 monedas y el tercero por 14; permanecen desbloqueados durante esta partida.'},
+        {target:'shopManageRelicsButton',title:'Las reliquias tienen riesgo',text:'Sus efectos duran varios pisos, pero pueden romperse. Solo puedes llevar cinco: aquí puedes vender o sustituir las que no quieras.'},
+        {target:'nextFloorButton',title:'Decide cuándo continuar',text:'Puedes comprar varias cosas, cambiar las ofertas pagando monedas o ir directamente al siguiente piso. Cada piso será más exigente.'}
+      ]
+    };
+    function saveTutorialSeen(){
+      try{localStorage.setItem(TUTORIAL_KEY,JSON.stringify(tutorialSeen));}catch(_){}
+    }
+    function tutorialPosition(){
+      if(!tutorial.active)return;
+      const steps=TUTORIAL_STEPS[tutorial.kind],step=steps[tutorial.index];
+      const target=$(step.target),spot=$('tutorialSpotlight'),panel=$('tutorialPanel');
+      if(!target)return;
+      const r=target.getBoundingClientRect();
+      const pad=6;
+      spot.style.left=Math.max(5,r.left-pad)+'px';
+      spot.style.top=Math.max(5,r.top-pad)+'px';
+      spot.style.width=Math.min(innerWidth-10,r.width+pad*2)+'px';
+      spot.style.height=Math.min(innerHeight-10,r.height+pad*2)+'px';
+      const w=Math.min(360,innerWidth-24);
+      panel.style.width=w+'px';
+      const h=panel.offsetHeight||220;
+      let top=r.bottom+20;
+      if(top+h>innerHeight-12)top=r.top-h-20;
+      if(top<12)top=Math.max(12,(innerHeight-h)/2);
+      let left=Math.max(12,Math.min(innerWidth-w-12,r.left+(r.width-w)/2));
+      panel.style.top=Math.round(top)+'px';panel.style.left=Math.round(left)+'px';
+    }
+    function drawTutorial(){
+      if(!tutorial.active)return;
+      const steps=TUTORIAL_STEPS[tutorial.kind],item=steps[tutorial.index];
+      $('tutorialChapter').textContent=tutorial.kind==='game'?'PRIMEROS PASOS':'PRIMERA TIENDA';
+      $('tutorialProgress').textContent=(tutorial.index+1)+' / '+steps.length;
+      $('tutorialProgressFill').style.width=((tutorial.index+1)/steps.length*100)+'%';
+      $('tutorialTitle').textContent=item.title;
+      $('tutorialText').textContent=item.text;
+      $('tutorialPrev').hidden=tutorial.index===0;
+      $('tutorialNext').textContent=tutorial.index===steps.length-1?(tutorial.kind==='shop'?'¡A comprar!':'¡A jugar!'):'Siguiente';
+      $('tutorialNext').append(makeGlyph('play'));
+      const focusTarget=$(item.target);
+      if(focusTarget){
+        const rect=focusTarget.getBoundingClientRect();
+        if(rect.top<12||rect.bottom>innerHeight-12)focusTarget.scrollIntoView({block:'center',behavior:'instant'});
+      }
+      requestAnimationFrame(tutorialPosition);
+      $('tutorialPanel').focus({preventScroll:true});
+    }
+    function startTutorial(kind){
+      if(tutorial.active)closeTutorial(false);
+      if(!TUTORIAL_STEPS[kind])return;
+      hideHelp();
+      tutorial.active=true;tutorial.kind=kind;tutorial.index=0;
+      if(state.phase==='playing')stopClock();
+      $('tutorialLayer').classList.remove('hidden');
+      requestAnimationFrame(drawTutorial);
+    }
+    function closeTutorial(resume=true){
+      if(!tutorial.active)return;
+      tutorialSeen[tutorial.kind]=true;saveTutorialSeen();
+      tutorial.active=false;tutorial.kind=null;
+      $('tutorialLayer').classList.add('hidden');
+      if(resume&&state.phase==='playing'&&!state.managerOpen&&!state.info)startClock();
+    }
+    $('tutorialNext').addEventListener('click',()=>{
+      if(!tutorial.active)return;
+      if(tutorial.index>=TUTORIAL_STEPS[tutorial.kind].length-1){closeTutorial();return;}
+      tutorial.index++;drawTutorial();
+    });
+    $('tutorialPrev').addEventListener('click',()=>{if(tutorial.active&&tutorial.index>0){tutorial.index--;drawTutorial();}});
+    $('tutorialSkip').addEventListener('click',()=>closeTutorial());
+    addEventListener('resize',tutorialPosition);
+    document.addEventListener('scroll',tutorialPosition,true);
+
     // Ranking: solo cinco mejores partidas, guardadas en este navegador.
     const SCORE_KEY = 'numeros_ciegos_top5_v1';
     const NAME_KEY = 'numeros_ciegos_nombre_v1';
@@ -337,41 +495,101 @@
         default: n(520,.09,'triangle',.15);
       }
     }
-    // Música chiptune original: 4 acordes, bajo, melodía, kick y hi-hat.
-    // Se programa con el reloj de AudioContext para evitar saltos en móviles.
-    const melody=[72,null,75,null,79,77,75,null,72,null,79,null,75,null,72,null,
-                  72,null,75,79,80,null,79,75,72,null,75,77,79,null,75,null];
-    const bass=[48,null,null,48,48,null,null,48,44,null,null,44,44,null,null,44,
-                51,null,null,51,51,null,null,51,46,null,null,46,46,null,null,46];
-    const rootChords=[[60,63,67],[56,60,63],[63,67,70],[58,62,65]];
+    // Banda sonora original: tres composiciones procedurales con motivos que evolucionan.
+    // Cada escena cambia el tempo, la armonía, el timbre y la percusión.
     const midi=m=>440*Math.pow(2,(m-69)/12);
+    const MUSIC_SCENES={
+      menu:{
+        bpm:86,lead:'sine',bass:'triangle',leadLevel:.092,bassLevel:.082,chordLevel:.026,beatLevel:.025,
+        chords:[[57,60,64],[53,57,60],[55,59,62],[52,55,59],[57,60,64],[60,64,67],[53,57,60],[55,59,62]],
+        motifs:[[69,null,72,null,76,null,72,71,null,69,null,67,null,69,null],
+                [72,null,null,76,79,null,76,null,74,null,72,null,69,null,null,null],
+                [76,null,79,81,null,79,null,76,74,null,72,74,null,null,69,null],
+                [72,null,69,null,null,67,69,null,71,null,72,null,69,null,null,null]]
+      },
+      playing:{
+        bpm:126,lead:'square',bass:'sawtooth',leadLevel:.072,bassLevel:.072,chordLevel:.021,beatLevel:.09,
+        chords:[[62,65,69],[58,62,65],[60,64,67],[57,60,64],[62,65,69],[65,69,72],[58,62,65],[60,64,67]],
+        motifs:[[74,null,77,null,81,79,77,null,74,null,72,74,77,null,74,null],
+                [77,79,81,null,84,null,81,79,77,null,74,72,74,null,77,null],
+                [81,null,84,86,84,null,81,null,79,81,77,null,74,null,72,null],
+                [74,77,79,null,81,null,79,77,74,72,74,null,69,null,null,null]]
+      },
+      shop:{
+        bpm:100,lead:'triangle',bass:'sine',leadLevel:.093,bassLevel:.105,chordLevel:.032,beatLevel:.033,
+        chords:[[60,64,67,71],[57,60,64,67],[62,65,69,72],[55,59,62,65],[60,64,67,71],[65,69,72,76],[62,65,69,72],[55,59,62,65]],
+        motifs:[[76,null,79,null,83,null,79,null,76,74,72,null,74,null,76,null],
+                [79,null,81,83,null,81,null,79,76,null,74,76,null,72,null,null],
+                [83,81,79,null,76,null,79,null,81,79,76,null,74,null,72,null],
+                [76,null,74,72,71,null,72,null,74,null,76,null,null,null,79,null]]
+      }
+    };
+    let musicScene=null;
+    function desiredMusicScene(){
+      return state.phase==='menu'?'menu':state.phase==='playing'?'playing':state.phase==='shop'?'shop':null;
+    }
     function scheduleMusic(){
-      if(!audioCtx || !musicTimer || !audioSettings.music)return;
-      const stepTime=60/120/4;
-      const isShop=state.phase==='shop';
-      while(nextMusicNote<audioCtx.currentTime+.16){
-        const idx=musicStep%32;
-        if(melody[idx]!=null)synth(midi(melody[idx]),stepTime*.91,'triangle',isShop?.12:.17,nextMusicNote,'music');
-        if(bass[idx]!=null)synth(midi(bass[idx]),stepTime*1.65,'square',isShop?.095:.13,nextMusicNote,'music');
-        if(idx%8===0){
-          const chord=rootChords[Math.floor(idx/8)];
-          chord.forEach(m=>synth(midi(m),.34,'sine',.045,nextMusicNote,'music'));
+      if(!audioCtx||!musicTimer||!audioSettings.music||!musicScene)return;
+      const theme=MUSIC_SCENES[musicScene];
+      const stepTime=60/theme.bpm/4;
+      while(nextMusicNote<audioCtx.currentTime+.15){
+        const step=musicStep%16;
+        const bar=Math.floor(musicStep/16);
+        const phrase=Math.floor(bar/8);
+        const chord=theme.chords[bar%theme.chords.length];
+        const phraseVariation=(phrase+Math.floor(bar/2))%theme.motifs.length;
+        const melody=theme.motifs[phraseVariation][step];
+        // Se alternan espacios silenciosos, respuestas y octavas por frase.
+        const mutedBar=musicScene==='menu'&&bar%8===7;
+        if(melody!=null && !mutedBar && !(step%4===3&&phrase%3===2)){
+          const note=melody + (phrase%4===3 && musicScene==='playing' ? -12 : 0);
+          const accent=step%4===0?1.12:.83;
+          synth(midi(note),stepTime*(musicScene==='menu'?1.65:1.18),theme.lead,theme.leadLevel*accent,nextMusicNote,'music');
         }
-        // Beat suave sintetizado, sin tapar los efectos.
-        if(idx%4===0)synth(92,.13,'sine',.13,nextMusicNote,'music',52);
-        if(idx%2===0)synth(1800,.035,'triangle',.05,nextMusicNote,'music',1100);
-        nextMusicNote+=stepTime;musicStep++;
+        if(step===0||step===8){
+          const chordLength=musicScene==='menu'?stepTime*6.6:stepTime*3.3;
+          chord.forEach((note,i)=>synth(midi(note),chordLength,'sine',theme.chordLevel*(i===0?1.12:1),nextMusicNote,'music'));
+        }
+        if(step%4===0 || (musicScene==='playing' && (step===6||step===14))){
+          const root=chord[0]-12+(step===12?7:0);
+          synth(midi(root),stepTime*(musicScene==='menu'?3.2:2.4),theme.bass,theme.bassLevel,nextMusicNote,'music');
+        }
+        if(musicScene==='playing'){
+          // Percusión más marcada y una retirada al final de cada cuatro compases.
+          if(step%4===0) synth(85,stepTime*.88,'sine',theme.beatLevel,nextMusicNote,'music',49);
+          if(step===4||step===12) synth(240,stepTime*.38,'triangle',.043,nextMusicNote,'music',95);
+          if(step%2===0 && !(bar%4===3 && step>8)) synth(1600,stepTime*.23,'triangle',.016,nextMusicNote,'music',800);
+        }else if(musicScene==='shop'){
+          if(step===0||step===10) synth(110,stepTime*.7,'sine',theme.beatLevel,nextMusicNote,'music',66);
+          if(step===4||step===12) synth(700,stepTime*.22,'triangle',.021,nextMusicNote,'music',480);
+        }else if(musicScene==='menu' && step===0 && bar%2===0){
+          synth(95,stepTime*1.4,'sine',theme.beatLevel,nextMusicNote,'music',60);
+        }
+        nextMusicNote+=stepTime;
+        musicStep++;
       }
     }
     function startMusic(){
-      initAudio();if(musicTimer||!audioSettings.music||!audioCtx)return;
-      musicStep=0;nextMusicNote=audioCtx.currentTime+.06;
-      musicTimer=setInterval(scheduleMusic,45);
+      initAudio();
+      if(!audioSettings.music||!audioCtx)return;
+      const desired=desiredMusicScene();
+      if(!desired){stopMusic();return;}
+      if(musicTimer&&musicScene===desired)return;
+      if(musicTimer)clearInterval(musicTimer);
+      musicScene=desired;
+      musicStep=0;
+      nextMusicNote=audioCtx.currentTime+.10;
+      musicTimer=setInterval(scheduleMusic,50);
       applyAudioGain();scheduleMusic();
     }
     function stopMusic(){
       if(musicTimer){clearInterval(musicTimer);musicTimer=null;}
+      musicScene=null;
       applyAudioGain();
+    }
+    function updateMusicScene(){
+      if(!audioSettings.music || !desiredMusicScene()){stopMusic();return;}
+      startMusic();
     }
     function syncAudio(){
       for(const s of ['Menu','Pause']){
@@ -379,8 +597,10 @@
         $('sfx'+s).checked=audioSettings.sfx;
         $('volume'+s).value=Math.round(audioSettings.volume*100);
       }
+      $('musicSceneMenu').textContent='Banda sonora: menú · ambiente relajado';
+      $('musicScenePause').textContent='Banda sonora: '+(state.phase==='paused'?'pausada':'partida');
       if(!audioSettings.music)stopMusic();
-      else if(['playing','shop'].includes(state.phase))startMusic();
+      else updateMusicScene();
       applyAudioGain();
       try{localStorage.setItem('nc_audio',JSON.stringify(audioSettings));}catch(_){}
     }
@@ -395,7 +615,7 @@
         const ready=await unlockAudio();
         if(!ready){toast('🔇 No se pudo activar el audio. Revisa el silencio del dispositivo.',true);return;}
         if(!audioSettings.sfx){audioSettings.sfx=true;syncAudio();}
-        sfx('buy');toast('🔊 ¡Audio activado!');
+        sfx('buy');updateMusicScene();toast('🔊 ¡Audio activado!');
       });
     }
     // Animaciones ligeras, compatibles con móvil.
@@ -444,6 +664,7 @@
       for(const n of ['menu','pause','shop']){
         const el=$(n+'Overlay');el.classList.toggle('hidden',n!==name);el.classList.toggle('flex',n===name);
       }
+      updateMusicScene();
     }
     function hasJoker(id){return state.jokers.includes(id);}
     function addCoins(n,el=null){state.coins=Math.max(0,state.coins+n);if(el && n>0)moneyFloat(n,el);$('coinsUI').textContent='🪙 '+state.coins;}
@@ -601,14 +822,16 @@
       }
       state.floor=upcomingFloor;state.phase='playing';showOverlay(null);configFloor();rollCurrent();startClock();sfx('tap');toast('🏁 Piso '+state.floor);
     }
-    function startRun(){
+    function startRun(forceTutorial=false){
       unlockAudio();stopClock();
       if(['playing','paused','shop'].includes(state.phase))finalResult('Abandonada');
       savePlayerName();
+      state.info=false;
       state.phase='playing';state.floor=1;state.coins=0;state.stored=[];state.capacity=1;state.jokers=[];state.erasers=0;state.defusers=0;state.iceLockTurns=0;state.baseRerolls=0;state.bonusRerolls=0;state.guaranteeSpecial=false;state.shopRerolls=0;state.rescueReadyFloor=1;state.managerOpen=false;state.managerFrom=null;state.lastBreaks=[];state.brokenCount=0;state.streak=0;state.maxStreak=0;state.announcedRecord=false;state.milestones=new Set();
       state.score=0;state.completedFloors=0;state.scoredSlots=new Set();state.resultSaved=false;state.lastResult=null;state.lastFloorAward=0;
       $('resultPanel').classList.add('hidden');
       showOverlay(null);configFloor();rollCurrent();startClock();startMusic();toast('✨ ¡Nueva partida!');
+      if(forceTutorial || !tutorialSeen.game)startTutorial('game');
     }
     function endRun(reason){
       if(!['playing','shop'].includes(state.phase))return;
@@ -620,6 +843,7 @@
     }
     function pause(){
       if(state.phase!=='playing')return;
+      if(tutorial.active)closeTutorial(false);
       state.phase='paused';stopClock();stopMusic();sfx('pause');
       $('pauseEmoji').textContent='⏸️';$('pauseTitle').textContent='PAUSA';
       $('pauseDetail').textContent='El cronómetro está detenido. Piso '+state.floor+' · '+fmtPoints(state.score)+' puntos.';
@@ -635,7 +859,7 @@
       state.phase='menu';stopClock();stopMusic();showOverlay('menu');render();renderRanking();
     }
     function startClock(){
-      stopClock();state.lastTime=performance.now();
+      stopClock();if(tutorial.active||state.info)return;state.lastTime=performance.now();
       state.timer=setInterval(()=>{
         if(state.phase!=='playing')return;
         const now=performance.now(),elapsed=Math.max(0,(now-state.lastTime)/1000);state.timeLeft-=elapsed;state.lastTime=now;
@@ -810,6 +1034,7 @@
       sfx('win');particles($('board'),32);flash('#fde047');setStatus('🏆 Piso completado. ¡A la tienda!');
       state.shopRerolls=0;generateOffers();renderShop();render();showOverlay('shop');
       toast('🏆 ¡Piso '+state.floor+' completado!');
+      if(!tutorialSeen.shop)startTutorial('shop');
     }
 
     // Desgaste aleatorio después de cada piso y rescate frágil.
@@ -917,6 +1142,7 @@
 
     function renderHUD(){
       $('floorUI').textContent=state.floor;
+      setHelp($('timeUI'),'Tiempo restante','Cuando llegue a cero, termina la partida. Algunos números te dan segundos extra.');
       $('timeUI').textContent=Math.floor(Math.max(0,state.timeLeft)/60)+':'+String(Math.floor(Math.max(0,state.timeLeft)%60)).padStart(2,'0');
       $('timeUI').className='text-base sm:text-lg tabular-nums '+(state.timeLeft<16?'text-rose-400':'');
       $('rangeUI').textContent='1–'+state.max;
@@ -929,23 +1155,41 @@
       $('streakUI').textContent=state.iceLockTurns>0?'🧊 Guardados bloqueados: '+state.iceLockTurns+' turno(s)':'🔥 Racha '+state.streak+' · x'+streakMultiplier().toFixed(2);
       updateBombHUD();
     }
+    function slotBounds(index){
+      let low=0,high=state.max+1;
+      for(let j=index-1;j>=0;j--)if(state.board[j]&&typeof state.board[j].value==='number'){low=state.board[j].value;break;}
+      for(let j=index+1;j<state.size;j++)if(state.board[j]&&typeof state.board[j].value==='number'){high=state.board[j].value;break;}
+      return {low,high};
+    }
     function renderBoard(){
       const root=$('board');root.replaceChildren();
       const token=activeToken(),valid=state.phase==='playing'&&!state.eraseMode?validSlots(token):[];
       for(let i=0;i<state.size;i++){
         const cell=state.board[i],ok=valid.includes(i),erase=state.eraseMode&&!!cell;
         const b=document.createElement('button');b.type='button';b.dataset.boardIndex=i;
-        b.className='relative w-full h-9 sm:h-10 rounded-lg border flex items-center justify-center gap-2 text-base font-black transition-transform active:scale-[.985] '+(
-          erase?'bg-rose-700/60 border-rose-300 text-white':
-          cell?(cell.type==='miracle'?'bg-fuchsia-700/70 border-fuchsia-300 rare-glow':cell.type==='bomb'?'bg-amber-800/70 border-orange-400':cell.type==='curse'?'bg-rose-900/70 border-rose-500':cell.type==='ice'?'bg-cyan-900/80 border-cyan-500':'bg-slate-700/90 border-white/10')+' text-white':
-          ok?'bg-green-600 border-green-300 text-white slot-available':
-          'bg-slate-900/80 border-white/10 text-slate-500');
-        if(ok)b.setAttribute('aria-label','Colocar número en casilla '+(i+1));
-        const num=document.createElement('span');num.textContent=cell?(cell.value===null?'★':cell.value):'·';
-        const left=document.createElement('span');left.className='absolute left-3 text-[10px] font-bold '+(cell?'text-slate-400':'text-white/45');left.textContent=pos(i);
-        b.append(left,num);
-        if(cell){const icon=document.createElement('span');icon.className='absolute right-3 text-xs';icon.textContent=TYPES[cell.type]?.icon||(cell.type==='auto'?'✨':'');b.append(icon);}
-        if(erase){const x=document.createElement('span');x.className='absolute right-3 text-sm';x.textContent='✖';b.append(x);}
+        const kind=erase?'is-erasable':cell?'is-filled':ok?'is-valid':'is-blocked';
+        b.className='board-slot relative w-full rounded-lg border active:scale-[.985] '+kind+' '+(ok?'slot-available ':'')+(cell?.type==='miracle'?'rare-glow ':'');
+        const index=document.createElement('span');index.className='board-slot__index';index.textContent=pos(i);
+        const num=document.createElement('span');num.className='board-slot__number';num.textContent=cell?(cell.value===null?'★':cell.value):'—';
+        const right=document.createElement('span');right.className='board-slot__status';
+        let name,text;
+        if(erase){name='Borrar casilla '+pos(i);text='Pulsa para liberar esta casilla. No recuperas los puntos que ya habías ganado.';right.textContent='BORRAR';}
+        else if(cell){
+          const type=cell.type==='auto'?'auto':cell.type;
+          const typeName=TYPES[type]?.name || 'Automático';
+          const icon=cell.type==='auto'?'sparkle':GLYPH_MAP[TYPES[type]?.icon]||'digits';
+          right.append(makeGlyph(icon),document.createTextNode(typeName));
+          name='Casilla '+pos(i)+' · '+(cell.value===null?'comodín':cell.value);
+          text=TYPE_HELP[type]||'Este hueco ya está ocupado.';
+        }else if(ok){right.textContent='VÁLIDO';name='Casilla '+pos(i)+' · disponible';
+          const bounds=slotBounds(i);
+          text='Puedes colocar aquí '+(token.value===null?'este comodín':'el '+token.value)+'. '+(token.value!==null?'Debe estar entre '+bounds.low+' y '+bounds.high+'.':'No altera los límites de orden.');
+        }else{right.textContent='SIN HUECO';name='Casilla '+pos(i)+' · no disponible';
+          text=state.phase!=='playing'?'Comienza una partida para colocar números.':!token?'No hay ningún número en mano.':'Aquí no encaja tu número. Solo puedes usar casillas verdes para mantener el orden.';
+        }
+        setHelp(b,name,text);
+        b.setAttribute('aria-label',name+'. '+text);
+        b.append(index,num,right);
         b.addEventListener('click',()=>{unlockAudio();place(i);});root.append(b);
       }
     }
@@ -958,7 +1202,7 @@
         const top=document.createElement('div');top.className='text-sm font-black';top.textContent=locked?'🔒':token?(TYPES[token.type].icon+' '+(token.value===null?'★':token.value)):'+';
         const bottom=document.createElement('div');bottom.className='text-[9px] text-slate-300 truncate px-1';
         bottom.textContent=locked?'Compra en tienda':isBomb(token)?'Hasta piso '+(token.expiresAtFloor-1):token?TYPES[token.type].name:'Vacío';
-        b.title=isBomb(token)?'Mecha: '+bombTimerText(token)+' · Debes colocarla hasta el piso '+(token.expiresAtFloor-1):locked?'Compra un hueco en la tienda':'';
+        setHelp(b,locked?'Espacio bloqueado':token?TYPES[token.type].name:'Espacio disponible',locked?'Compra otro hueco de guardado en la tienda.':token?(TYPE_HELP[token.type]+' '+(isBomb(token)?'Mecha pausada: '+bombTimerText(token)+'. Usar antes del piso '+token.expiresAtFloor+'.':'Pulsa para usar este número guardado.')):'Puedes guardar aquí un número para usarlo después.');
         b.append(top,bottom);b.disabled=locked||!token||state.phase!=='playing'||state.eraseMode||state.iceLockTurns>0||(isBomb(state.current)&&state.selected<0);
         b.addEventListener('click',()=>selectStored(i));root.append(b);
       }
@@ -970,7 +1214,7 @@
       if(!state.jokers.length){const p=document.createElement('span');p.className='text-xs text-slate-500';p.textContent='Todavía no tienes reliquias.';root.append(p);}
       for(const id of state.jokers){
         const item=GOODS.find(x=>x.id===id),d=document.createElement('button');
-        d.type='button';d.title=item.desc+' · '+breakPct(item)+'% de rotura al terminar piso';
+        d.type='button';setHelp(d,item.title,item.desc+' Riesgo de romperse al superar un piso: '+breakPct(item)+'%. Pulsa para gestionarla.');
         d.className='joker-shine rounded-lg px-2 py-1 text-[11px] bg-indigo-500/20 border border-indigo-300/25 text-indigo-100 font-semibold active:scale-95';
         d.textContent=item.icon+' '+item.title+' · 💔'+breakPct(item)+'%';
         d.addEventListener('click',openRelicManager);root.append(d);
@@ -981,9 +1225,17 @@
     function render(){
       renderHUD();renderBoard();renderStorage();renderJokers();
       const active=activeToken();
+      if(helpAnchor && !helpPinned)hideHelp();
       $('currentUI').textContent=active?(active.value===null?'★':active.value):'—';
       $('kindUI').textContent=active?TYPES[active.type].icon+' '+TYPES[active.type].name:'Sin número';
-      $('kindUI').className='text-xs font-semibold truncate '+(active?TYPES[active.type].color:'text-slate-300');
+      $('kindUI').className='text-xs font-semibold leading-snug '+(active?TYPES[active.type].color:'text-slate-300');
+      const description=active?TYPE_HELP[active.type]:'Cada número tiene su lugar.';
+      $('currentDescription').textContent=description;
+      setHelp($('currentCard'),active?TYPES[active.type].name+(active.value===null?'':' · '+active.value):'Número en mano',description);
+      setHelp($('storeButton'),'Guardar número','Guarda temporalmente el número que tienes en mano. Empiezas con un hueco de inventario; comprarás más en la tienda.');
+      setHelp($('rerollButton'),'Volver a tirar','Descarta el número actual y muestra otro al azar. El número de cambios está limitado por piso.');
+      setHelp($('eraserButton'),'Goma mágica','Si tienes una goma, puedes borrar una casilla ocupada para corregir tu estrategia.');
+      setHelp($('defuseButton'),'Kit antibombas','Si tienes un kit, elimina una bomba activa o guardada. No da puntos por la eliminación.');
       $('storeButton').disabled=state.phase!=='playing'||state.managerOpen||!state.current||state.selected>=0||state.stored.length>=state.capacity||state.eraseMode||state.iceLockTurns>0;
       $('rerollButton').disabled=state.phase!=='playing'||state.managerOpen||currentRerolls()<=0||state.eraseMode||isBomb(active);
       $('rerollCount').textContent=currentRerolls();
@@ -998,6 +1250,10 @@
       $('infoPanel').classList.toggle('hidden',!state.info);
     }
     function renderShop(){
+      setHelp($('shopCards'),'Ofertas de la tienda','Elige cartas para comprar. Cada objeto muestra su efecto, precio y rareza.');
+      setHelp($('buyCapacityButton'),'Más espacios para guardar','Compra el segundo espacio por 8 monedas y el tercero por 14. Son mejoras para esta partida.');
+      setHelp($('shopManageRelicsButton'),'Gestionar reliquias','Puedes llevar cinco reliquias; tienen probabilidad de romperse. Aquí puedes venderlas para recuperar monedas.');
+      setHelp($('nextFloorButton'),'Siguiente piso','Termina tus compras y empieza el próximo piso, con una dificultad mayor.');
       $('shopCoinsUI').textContent='🪙 '+state.coins;
       const cost=2+state.shopRerolls*2;
       $('shopRerollButton').textContent='🔄 Ofertas · '+cost+' 🪙';$('shopRerollButton').disabled=state.coins<cost;
@@ -1015,10 +1271,12 @@
         const card=document.createElement('article');
         const color=it.rarity==='Legendario'?'border-yellow-300/80 bg-fuchsia-800/40 rare-glow':it.rarity==='Épico'?'border-fuchsia-400/60 bg-fuchsia-900/20':it.rarity==='Raro'?'border-sky-400/50 bg-sky-900/20':'border-white/15 bg-slate-900/70';
         card.className='shop-card '+(it.sold?'sold opacity-50 ':'')+'rounded-xl p-2.5 sm:p-3 border flex flex-col '+color;
+        setHelp(card,it.title,it.desc+(it.kind==='joker'?' Riesgo de rotura: '+breakPct(it)+'% por piso.':'')+' Precio: '+it.price+' monedas.');
         const headline=document.createElement('div');headline.className='flex justify-between items-start gap-1';
         const emoji=document.createElement('span');emoji.className='text-2xl sm:text-3xl';emoji.textContent=it.icon;
         const rarity=document.createElement('span');rarity.className='text-[9px] rounded px-1.5 py-1 border border-white/15 text-slate-300';rarity.textContent=it.rarity;
         headline.append(emoji,rarity);
+        const helpButton=document.createElement('button');helpButton.type='button';helpButton.className='help-dot ml-auto';helpButton.textContent='i';helpButton.setAttribute('aria-label','Detalles de '+it.title);helpButton.dataset.helpToggle='parent';headline.insertBefore(helpButton,rarity);
         const title=document.createElement('strong');title.className='text-xs sm:text-sm mt-2 leading-tight';title.textContent=it.title;
         const desc=document.createElement('p');desc.className='text-[10px] sm:text-xs text-slate-400 mt-1 flex-1 leading-snug';desc.textContent=it.desc+(it.kind==='joker'?' · 💔 '+breakPct(it)+'% rotura/piso':'');
         const btn=document.createElement('button');btn.className='rounded-lg mt-2 py-2 text-xs font-black '+(it.sold?'bg-slate-700 text-slate-400':'bg-yellow-300 hover:bg-yellow-200 text-slate-950 disabled:bg-slate-600 disabled:text-slate-300');
@@ -1035,10 +1293,12 @@
     }
 
     // Botones, opciones y atajos.
-    $('playButton').addEventListener('click',startRun);
+    $('playButton').addEventListener('click',()=>startRun());
+    $('menuTutorialButton').addEventListener('click',()=>startRun(true));
+    $('repeatTutorialButton').addEventListener('click',()=>{if(state.phase==='playing')startTutorial('game');else if(state.phase==='shop')startTutorial('shop');else startRun(true);});
     $('pauseButton').addEventListener('click',pause);
     $('resumeButton').addEventListener('click',resume);
-    $('restartButton').addEventListener('click',startRun);
+    $('restartButton').addEventListener('click',()=>startRun());
     $('menuButton').addEventListener('click',backMenu);
     $('nextFloorButton').addEventListener('click',nextFloor);
     $('shopRerollButton').addEventListener('click',()=>{unlockAudio();rerollOffers();});
@@ -1055,16 +1315,28 @@
     $('bombCollapsed').addEventListener('click',expandBombPopup);
     $('buyCapacityButton').addEventListener('click',()=>{unlockAudio();buyCapacity();});
     $('shopDefuseButton').addEventListener('click',()=>{unlockAudio();useDefuser();});
-    $('infoButton').addEventListener('click',()=>{state.info=!state.info;render();});
+    function toggleGuide(force){
+      const open=typeof force==='boolean'?force:!state.info;
+      state.info=open;
+      if(open&&state.phase==='playing')stopClock();
+      if(!open&&state.phase==='playing'&&!tutorial.active&&!state.managerOpen)startClock();
+      render();
+      if(open){requestAnimationFrame(()=>$('infoPanel').scrollIntoView({behavior:prefersReduced?'instant':'smooth',block:'start'}));}
+      else if(state.phase==='playing')window.scrollTo({top:0,behavior:prefersReduced?'instant':'smooth'});
+    }
+    $('infoButton').addEventListener('click',()=>toggleGuide());
+    $('closeInfoButton').addEventListener('click',()=>toggleGuide(false));
     addEventListener('keydown',e=>{
-      if(e.key==='Escape'){if(state.managerOpen)closeRelicManager();else if(state.phase==='playing')pause();else if(state.phase==='paused')resume();return;}
-      if(state.phase!=='playing'||state.managerOpen||e.target instanceof HTMLInputElement)return;
+      if(tutorial.active && (e.key==='ArrowRight'||e.key==='Enter'&&e.target===document.body)){e.preventDefault();$('tutorialNext').click();return;}
+      if(tutorial.active && e.key==='ArrowLeft'){e.preventDefault();$('tutorialPrev').click();return;}
+      if(e.key==='Escape'){if(tutorial.active){closeTutorial();return;}if(state.managerOpen)closeRelicManager();else if(state.phase==='playing')pause();else if(state.phase==='paused')resume();return;}
+      if(tutorial.active||state.phase!=='playing'||state.managerOpen||e.target instanceof HTMLInputElement)return;
       if(e.key.toLowerCase()==='g')store();
       else if(e.key.toLowerCase()==='r')reroll();
       else if(e.key.toLowerCase()==='e')toggleErase();
       else if('1234567890'.includes(e.key)&&e.key.length===1)place(e.key==='0'?9:Number(e.key)-1);
     });
-    document.addEventListener('visibilitychange',()=>{if(document.hidden&&state.phase==='playing')pause();});
+    document.addEventListener('visibilitychange',()=>{if(document.hidden&&state.phase==='playing'){if(tutorial.active)closeTutorial(false);pause();}});
     // Compartir resultados, ranking persistente y nombre de jugador.
     $('playerName').addEventListener('change',savePlayerName);
     $('playerName').addEventListener('blur',savePlayerName);
