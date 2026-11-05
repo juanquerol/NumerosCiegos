@@ -1,0 +1,58 @@
+/* Tailwind se encarga de la interfaz. Aquí solo hay efectos especiales. */
+    html { color-scheme: dark; }
+    body { background: radial-gradient(ellipse at 15% 10%, #233b68 0%, #111b34 42%, #090e1d 100%); }
+    button { touch-action: manipulation; }
+    button:disabled { cursor: not-allowed; }
+    .slot-available { animation: breathe 1.3s ease-in-out infinite; }
+    .joker-shine { background-image: linear-gradient(110deg, transparent 15%, #ffffff1c 44%, transparent 70%); background-size: 250% 100%; animation: shine 5s linear infinite; }
+    .shop-card { transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease; }
+    .shop-card:not(.sold):hover { transform: translateY(-3px); }
+    .modal-panel { animation: appear .24s cubic-bezier(.2,1.25,.3,1) both; }
+    .floating-particle { position: fixed; width: 8px; height: 8px; z-index: 100; pointer-events: none; border-radius: 2px; animation: scatter .75s cubic-bezier(.2,.7,.25,1) forwards; }
+    .floating-money { position: fixed; pointer-events: none; z-index: 110; font-weight: 900; color: #facc15; text-shadow: 0 2px 5px #0009; animation: rise .95s ease-out forwards; }
+    .pulse-badge { animation: ping-soft .55s ease-out; }
+    .shake { animation: shake .26s ease-out; }
+    .floating-score { position:fixed; pointer-events:none; z-index:110; color:#fef08a; font-size:1.15rem; font-weight:1000; text-shadow:0 2px 9px #000b; animation:rise 1.05s ease-out forwards; }
+    .relic-breaking { animation:crack .53s ease-in forwards; }
+    .combo-reveal { animation: comboReveal .8s cubic-bezier(.15,1.4,.45,1) both; }
+    .impact-flash { animation: impactFlash .34s ease-out both; }
+    .bomb-alert { animation: bombAlert .6s ease-in-out infinite alternate; }
+    .rare-glow { animation: rareGlow 1s ease-in-out infinite alternate; }
+    .hazard-impact { animation: hazardImpact .4s ease-out; }
+    /* Alerta flotante no bloqueante: en móvil se puede contraer a una pequeña píldora. */
+    .bomb-pop-enter { animation: bombPopEnter .44s cubic-bezier(.14,1.45,.36,1) both; }
+    .bomb-pop-critical { animation: bombCritical .34s ease-in-out infinite alternate; }
+    .bomb-ring { background: conic-gradient(#f43f5e var(--angle, 360deg), #431e35 0); }
+    .bomb-pop-compact #bombExpanded { display:none; }
+    .bomb-pop-compact #bombCollapsed { display:flex; }
+    #bombPopup:not(.bomb-pop-compact) #bombCollapsed { display:none; }
+    @keyframes bombPopEnter { from{opacity:0;transform:translateY(-26px) scale(.75) rotate(-3deg)} 60%{opacity:1;transform:translateY(3px) scale(1.045) rotate(1deg)} to{opacity:1;transform:translateY(0) scale(1) rotate(0)} }
+    @keyframes bombCritical { from{filter:brightness(1);box-shadow:0 0 14px #fb7185ab,0 15px 35px #000a} to{filter:brightness(1.2);box-shadow:0 0 31px #f43f5edc,0 15px 35px #000a} }
+
+    @keyframes bombAlert { from {box-shadow:0 0 0 1px #fb718555;} to {box-shadow:0 0 15px 3px #f43f5e9a;} }
+    @keyframes rareGlow { from{box-shadow:0 0 5px #f0abfc66;}to{box-shadow:0 0 24px #c084fcdd;} }
+    @keyframes hazardImpact {0%,100%{transform:translateX(0)}20%{transform:translateX(-5px)}45%{transform:translateX(5px)}70%{transform:translateX(-3px)}}
+    @keyframes crack { 0%{filter:brightness(1);transform:rotate(0) scale(1)} 28%{filter:brightness(2);transform:rotate(-9deg) scale(1.2)} 55%{filter:brightness(1.5) grayscale(.5);transform:rotate(8deg) scale(.86)} 100%{filter:grayscale(1);transform:rotate(26deg) scale(.3);opacity:0} }
+    @keyframes comboReveal { 0%{opacity:0; transform:translate(-50%,-15px) scale(.45) rotate(-5deg)} 28%{opacity:1;transform:translate(-50%,0) scale(1.2) rotate(3deg)} 65%{opacity:1;transform:translate(-50%,0) scale(1)} 100%{opacity:0;transform:translate(-50%,-28px) scale(.95)} }
+    @keyframes impactFlash { 0%{opacity:0} 27%{opacity:.28} 100%{opacity:0} }
+
+    @keyframes breathe { 0%,100% { box-shadow:0 0 0 1px #4ade80a9,0 0 8px #22c55e34; } 50% {box-shadow:0 0 0 3px #4ade8069,0 0 17px #22c55e66;} }
+    @keyframes shine { to { background-position: -250% 0; } }
+    @keyframes appear { from { opacity: 0; transform: translateY(14px) scale(.97); } to {opacity:1;transform:none;} }
+    @keyframes scatter { to {opacity:0; transform:translate(var(--dx),var(--dy)) rotate(var(--rot)) scale(.3);} }
+    @keyframes rise { from {opacity:0;transform:translateY(2px) scale(.8);} 20% {opacity:1;} to {opacity:0;transform:translateY(-55px) scale(1.1);} }
+    @keyframes ping-soft { 0%{transform:scale(1);} 45%{transform:scale(1.18);} 100%{transform:scale(1);} }
+    @keyframes shake { 25%{transform:translateX(-4px);} 50%{transform:translateX(4px);} 75%{transform:translateX(-2px);} }
+    @media (prefers-reduced-motion: reduce) { *,*::before,*::after { animation-duration:.01ms!important; animation-iteration-count:1!important; scroll-behavior:auto!important; transition-duration:.01ms!important;} }
+
+    /* SOTIORNO: iconografía SVG diseñada para la interfaz del juego. */
+    .icon-sprite { position:absolute; width:0; height:0; overflow:hidden; pointer-events:none; }
+    .ui-glyph { display:inline-block; width:1.05em; height:1.05em; vertical-align:-.16em; stroke:currentColor; fill:none; flex:none; }
+    .brand-symbol { width:65%; height:65%; display:block; }
+    .brand-wordmark { font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; letter-spacing:-.055em; }
+    button .ui-glyph { vertical-align:-.17em; }
+    #pauseEmoji .ui-glyph { width:1.15em; height:1.15em; }
+    #bombPopup .ui-glyph { vertical-align:-.19em; }
+    #comboBanner .ui-glyph { filter:drop-shadow(0 2px 2px #000a); }
+    .ui-glyph + .ui-glyph { margin-left:.1em; }
+
