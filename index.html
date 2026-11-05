@@ -29,8 +29,7 @@
     "offers": {"@type": "Offer", "price": "0", "priceCurrency": "EUR"}
   }
   </script>
-  <!-- Tailwind carga las clases utilitarias existentes; los estilos propios están en style.css. -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Estilos compilados y locales: sin dependencia de CDN. -->
   <link rel="stylesheet" href="style.css" />
 </head>
 <body class="min-h-screen text-slate-100 antialiased px-3 py-3 sm:px-5 sm:py-6">
@@ -147,8 +146,8 @@
         <span id="dangerUI" class="text-orange-200 font-bold">🌱 Piso de aprendizaje</span>
         <span id="streakUI" class="text-yellow-300 font-black whitespace-nowrap">🔥 Racha 0 · x1</span>
       </div>
-      <div class="rounded-xl border border-indigo-400/30 bg-gradient-to-r from-indigo-950 to-slate-900 px-3 py-2.5 mb-2.5 flex items-center justify-between gap-3">
-        <div class="min-w-0"><p class="text-[10px] uppercase tracking-wider text-indigo-300 font-bold">Número en mano</p><div class="flex items-center gap-2"><span id="currentUI" class="text-3xl leading-tight font-black">—</span><span id="kindUI" class="text-xs text-slate-300 font-semibold truncate">Pulsa Jugar</span></div></div>
+      <div id="currentCard" class="current-card rounded-xl border border-indigo-400/30 bg-gradient-to-r from-indigo-950 to-slate-900 px-3 py-3 mb-2.5 flex items-center justify-between gap-3" data-help-title="Número en mano" data-help-text="Coloca este número en una casilla verde respetando el orden de menor a mayor. Los números especiales tienen efectos propios.">
+        <div class="min-w-0 flex-1"><div class="flex items-center gap-2"><p class="text-[10px] uppercase tracking-wider text-indigo-300 font-bold">Número en mano</p><button id="currentInfoButton" type="button" class="help-dot" data-help-toggle="currentCard" aria-label="Ver explicación del número actual">i</button></div><div class="flex items-baseline gap-2"><span id="currentUI" class="text-3xl leading-tight font-black tabular-nums">—</span><span id="kindUI" class="text-xs text-slate-300 font-semibold leading-tight">Pulsa Jugar</span></div><p id="currentDescription" class="text-[11px] text-indigo-100/85 leading-snug mt-1">Cada número tiene su lugar.</p></div>
         <div class="flex gap-1.5 flex-shrink-0">
           <button id="storeButton" disabled class="bg-sky-500 hover:bg-sky-400 disabled:opacity-30 rounded-lg px-2.5 py-2 text-xs sm:text-sm font-black">📦 Guardar</button>
           <button id="rerollButton" aria-label="Cambiar el número actual" disabled class="bg-violet-500 hover:bg-violet-400 disabled:opacity-30 rounded-lg px-2.5 py-2 text-xs sm:text-sm font-black">🎲 <span id="rerollCount">2</span></button>
@@ -159,7 +158,7 @@
         <div class="mt-1.5 bg-rose-950 rounded-full h-2 overflow-hidden"><div id="bombBar" class="h-full bg-gradient-to-r from-rose-500 via-orange-400 to-yellow-300 transition-[width] duration-100" style="width:100%"></div></div>
       </div>
 
-      <div class="flex justify-between gap-2 items-center text-[11px] text-slate-400 mb-1.5"><span>MENOR <span class="text-green-400">↓ orden ascendente ↓</span> MAYOR</span><span id="filledUI">0/5</span></div>
+      <div class="flex justify-between gap-2 items-center text-[11px] text-slate-400 mb-1.5"><span class="inline-flex items-center gap-1.5"><svg class="ui-glyph text-emerald-300" aria-hidden="true"><use href="#glyph-digits"></use></svg> DE MENOR A MAYOR <span class="text-emerald-300">↓</span></span><span id="filledUI" class="font-bold text-slate-200">0/5</span></div>
       <div id="board" class="rounded-xl bg-slate-950/60 p-2 space-y-1.5" aria-label="Tablero de números ordenados"></div>
 
       <div class="mt-2.5 grid grid-cols-[1fr_auto] gap-2 items-center">
@@ -172,22 +171,70 @@
       <p id="statusUI" class="text-center mt-2.5 min-h-5 text-xs font-semibold text-slate-300" aria-live="polite">Ordena los números para ganar.</p>
     </section>
 
-    <section id="infoPanel" class="hidden mt-3 rounded-xl border border-sky-400/20 bg-slate-800/90 p-3 text-xs leading-relaxed text-slate-300 space-y-1.5">
-      <p class="font-black text-white text-sm">¿Cómo se juega?</p>
-      <p>Coloca números en orden creciente. Solo puedes pulsar casillas verdes. Empiezas con <b>1 espacio para guardar</b> y puedes ampliar hasta 3 en la tienda. Recupera los números guardados cuando lo necesites.</p>
-      <p>🟩 <b>Semilla:</b> completa la casilla anterior con un número menor. 🟦 <b>Espejo:</b> completa la siguiente con uno mayor. 🟨 <b>Comodín:</b> ocupa cualquier hueco y no rompe el orden.</p>
-      <p>🟪 <b>Reloj:</b> +12 segundos. 💗 <b>Corazón:</b> +3 monedas y el siguiente número será especial. 🌈 <b>Arcoíris:</b> ocupa dos casillas libres si están juntas.</p>
-      <p>En la tienda puedes comprar números especiales, dados, borradores y reliquias <b>frágiles</b>. Cada reliquia muestra su probabilidad de romperse al completar un piso. Pulsa <b>Gestionar / vender</b> para liberar huecos y recuperar algunas monedas.</p>
-      <p>🛟 <b>Última oportunidad:</b> al rescatarte tiene un <b>90% de probabilidad de romperse</b>. Si sobrevive, debe esperar dos pisos para volver a activarse. Además puede romperse al superar un piso como las demás reliquias.</p>
-      <p>📦 Empiezas con <b>1 hueco</b>. Compra hasta 2 huecos adicionales en la tienda: cuestan 8 y 14 monedas.</p>
-      <p>💣 <b>Bomba:</b> desde el piso 3. Si está activa y no la colocas a tiempo, la partida termina. Si la guardas, la mecha se pausa, pero debes usarla durante los 3 pisos disponibles (el de guardado y los dos siguientes).</p>
-      <p>☠️ <b>Maldito:</b> al colocarlo pierdes 10 segundos, pero ganas 160 puntos extra. 🧊 <b>Hielo:</b> bloquea temporalmente el uso de guardados durante tus dos próximas colocaciones.</p>
-      <p>🌟 <b>Milagro legendario:</b> ~0,1% de probabilidad natural desde el piso 3. Al colocarlo, completa todas las casillas que queden vacías, sin alterar números anteriores.</p>
-      <p>🧯 Puedes comprar un desactivador de bombas en la tienda; gástalo para eliminar una bomba sin recompensa.</p>
-      <p>🔥 A partir del piso 5, guardar y cambiar números consume segundos; desde el piso 6 se reducen las ayudas y aparecen menos especiales. Una racha de colocaciones seguidas multiplica los puntos, pero se pierde al guardar, usar dados o borrar.</p>
-      <p>⭐ <b>Puntos:</b> +100 por casilla nueva (con multiplicador por racha), +40 por número especial y +75 por autollenado. Cada piso superado da un bono por nivel y tiempo restante. Una casilla borrada no vuelve a dar puntos.</p>
-      <p>🏆 <b>Récords:</b> se guardan las 5 mejores partidas solo en este navegador. Puedes compartir tu puntuación por mensaje con un amigo.</p>
-    </section>
+<section id="infoPanel" class="hidden game-guide mt-3" aria-labelledby="guideTitle">
+  <div class="guide-header">
+    <div><p class="eyebrow">MANUAL DE CAMPO</p><h2 id="guideTitle">Aprende a controlar el azar</h2></div>
+    <div class="guide-actions"><button id="repeatTutorialButton" type="button" class="guide-replay"><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-play"></use></svg> Tutorial guiado</button><button id="closeInfoButton" type="button" class="guide-close" aria-label="Cerrar la guía">✕</button></div>
+  </div>
+  <div class="rule-summary">
+    <div class="rule-example" aria-label="Ejemplo de orden correcto: 7, 13, 28"><span>07</span><b>‹</b><span>13</span><b>‹</b><span>28</span></div>
+    <div><strong>Coloca de menor a mayor.</strong><p>Los huecos iluminados en verde son los que aceptan tu número. Completa todos para subir de piso.</p></div>
+  </div>
+  <div class="guide-section-title"><span>NÚMEROS Y EFECTOS</span><span>11 tipos</span></div>
+  <div class="legend-grid">
+<div class="legend-card tone-normal" data-help-title="Normal" data-help-text="Número corriente. Busca una casilla donde encaje.">
+          <span class="legend-icon"><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-digits"></use></svg></span>
+          <span class="legend-copy"><strong>Normal</strong><small>Número corriente. Busca una casilla donde encaje.</small></span>
+        </div>
+<div class="legend-card tone-green" data-help-title="Semilla" data-help-text="Al colocarlo, intenta completar también la casilla anterior.">
+          <span class="legend-icon"><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-seed"></use></svg></span>
+          <span class="legend-copy"><strong>Semilla</strong><small>Al colocarlo, intenta completar también la casilla anterior.</small></span>
+        </div>
+<div class="legend-card tone-blue" data-help-title="Espejo" data-help-text="Intenta rellenar la casilla siguiente con un valor mayor.">
+          <span class="legend-icon"><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-mirror"></use></svg></span>
+          <span class="legend-copy"><strong>Espejo</strong><small>Intenta rellenar la casilla siguiente con un valor mayor.</small></span>
+        </div>
+<div class="legend-card tone-purple" data-help-title="Reloj" data-help-text="Suma 12 segundos al cronómetro.">
+          <span class="legend-icon"><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-clock"></use></svg></span>
+          <span class="legend-copy"><strong>Reloj</strong><small>Suma 12 segundos al cronómetro.</small></span>
+        </div>
+<div class="legend-card tone-pink" data-help-title="Corazón" data-help-text="Da 3 monedas y garantiza un especial en la siguiente tirada.">
+          <span class="legend-icon"><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-heart"></use></svg></span>
+          <span class="legend-copy"><strong>Corazón</strong><small>Da 3 monedas y garantiza un especial en la siguiente tirada.</small></span>
+        </div>
+<div class="legend-card tone-gold" data-help-title="Comodín" data-help-text="Ocupa cualquier casilla libre sin romper el orden.">
+          <span class="legend-icon"><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-wild"></use></svg></span>
+          <span class="legend-copy"><strong>Comodín</strong><small>Ocupa cualquier casilla libre sin romper el orden.</small></span>
+        </div>
+<div class="legend-card tone-rainbow" data-help-title="Arcoíris" data-help-text="Ocupa un segundo hueco contiguo si está libre.">
+          <span class="legend-icon"><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-rainbow"></use></svg></span>
+          <span class="legend-copy"><strong>Arcoíris</strong><small>Ocupa un segundo hueco contiguo si está libre.</small></span>
+        </div>
+<div class="legend-card tone-bomb" data-help-title="Bomba" data-help-text="Tiene mecha. Si explota, pierdes la partida.">
+          <span class="legend-icon"><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-bomb"></use></svg></span>
+          <span class="legend-copy"><strong>Bomba</strong><small>Tiene mecha. Si explota, pierdes la partida.</small></span>
+        </div>
+<div class="legend-card tone-curse" data-help-title="Maldito" data-help-text="Resta 10 segundos, pero concede puntos extra.">
+          <span class="legend-icon"><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-skull"></use></svg></span>
+          <span class="legend-copy"><strong>Maldito</strong><small>Resta 10 segundos, pero concede puntos extra.</small></span>
+        </div>
+<div class="legend-card tone-ice" data-help-title="Hielo" data-help-text="Impide usar guardados durante dos colocaciones.">
+          <span class="legend-icon"><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-ice"></use></svg></span>
+          <span class="legend-copy"><strong>Hielo</strong><small>Impide usar guardados durante dos colocaciones.</small></span>
+        </div>
+<div class="legend-card tone-miracle" data-help-title="Milagro" data-help-text="Completa el tablero; es extremadamente raro.">
+          <span class="legend-icon"><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-miracle"></use></svg></span>
+          <span class="legend-copy"><strong>Milagro</strong><small>Completa el tablero; es extremadamente raro.</small></span>
+        </div>  </div>
+  <details class="rule-accordion">
+    <summary>Inventario, tienda y reliquias <svg class="ui-glyph" aria-hidden="true"><use href="#glyph-box"></use></svg></summary>
+    <div class="rule-detail"><p><strong>Guardar:</strong> empiezas con un hueco. Compra los otros dos en la tienda por 8 y 14 monedas. Toca un guardado para recuperarlo.</p><p><strong>Tienda:</strong> aparece al completar cada piso. Puedes comprar mejoras, consumibles y reliquias con monedas.</p><p><strong>Reliquias:</strong> caben hasta cinco. Tienen una probabilidad de romperse tras cada piso; puedes venderlas para liberar espacio.</p><p><strong>Bombas guardadas:</strong> la mecha se pausa, pero deben utilizarse antes de superar los dos pisos siguientes al del guardado.</p></div>
+  </details>
+  <details class="rule-accordion">
+    <summary>Puntuación, rachas y dificultad <svg class="ui-glyph" aria-hidden="true"><use href="#glyph-score"></use></svg></summary>
+    <div class="rule-detail"><p><strong>Puntos:</strong> +100 por casilla nueva, +40 por especial, +75 por autollenado; hay bonus por piso y tiempo restante.</p><p><strong>Rachas:</strong> encadena colocaciones para multiplicar puntos. Guardar, cambiar o borrar rompe la racha.</p><p><strong>Dificultad:</strong> a partir del piso 5, guardar o cambiar números consume tiempo; en pisos altos aparecen menos ayudas.</p><p><strong>Récord:</strong> tus cinco mejores partidas se guardan en este navegador.</p></div>
+  </details>
+</section>
     <section aria-labelledby="seoAboutTitle" class="mt-4 rounded-xl border border-white/10 bg-slate-800/60 px-4 py-3 text-slate-300 text-xs leading-relaxed">
       <h2 id="seoAboutTitle" class="text-sm font-black text-white">¿Qué es SOTIORNO?</h2>
       <p class="mt-1">SOTIORNO es un juego gratuito de ordenar números con elementos roguelike: decide dónde colocar cada número aleatorio, consigue reliquias, supera pisos y compite por tu récord. Juega desde el móvil o el ordenador, sin descargar nada.</p>
@@ -205,6 +252,7 @@
       <label for="playerName" class="block text-left text-xs font-bold text-slate-300 mt-4 mb-1">Tu nombre para el ranking</label>
       <input id="playerName" maxlength="18" autocomplete="nickname" placeholder="Jugador" class="w-full rounded-xl bg-slate-950/80 border border-white/15 px-3 py-2.5 text-white text-sm outline-none focus:ring-2 focus:ring-yellow-400" />
       <button id="playButton" class="mt-3 w-full rounded-xl bg-yellow-300 hover:bg-yellow-200 text-slate-950 py-3.5 font-black text-lg shadow-lg shadow-yellow-400/20">▶ NUEVA PARTIDA</button>
+      <button id="menuTutorialButton" type="button" class="menu-tutorial mt-2 w-full py-2.5 rounded-xl font-semibold text-sm"><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-info"></use></svg> Aprender a jugar · tutorial paso a paso</button>
       <div class="mt-4 text-left rounded-xl border border-yellow-300/20 bg-slate-900/65 p-3">
         <div class="flex items-center justify-between gap-2 mb-2"><h3 class="text-sm font-black text-yellow-200">🏆 TUS 5 MEJORES PARTIDAS</h3><button id="shareBestButton" class="rounded-lg bg-sky-600/50 disabled:opacity-30 px-2.5 py-1.5 text-[10px] font-bold">Compartir mejor</button></div>
         <div id="menuTop5" class="space-y-1.5 text-xs" aria-live="polite"></div>
@@ -215,6 +263,7 @@
         <label class="flex items-center justify-between">🔊 Sonidos <input id="sfxMenu" type="checkbox" checked class="accent-yellow-400 w-4 h-4"></label>
         <label class="flex items-center justify-between gap-4">Volumen <input id="volumeMenu" type="range" min="0" max="100" value="80" class="w-36 accent-yellow-400"></label>
       </div>
+      <p id="musicSceneMenu" class="audio-scene-label">Banda sonora: menú · ambiente relajado</p>
       <button id="audioTestMenu" type="button" class="mt-2.5 w-full rounded-xl border border-emerald-400/50 bg-emerald-500/15 px-3 py-2 text-xs font-black text-emerald-200 hover:bg-emerald-500/25">🔊 Probar sonido (desbloquea audio en móvil)</button>
       <div class="mt-3 text-xs text-slate-400">🌈 Especiales · 💔 Reliquias frágiles · 🔥 Rachas</div>
     </div>
@@ -237,7 +286,7 @@
         <button id="shareResultButton" class="mt-3 w-full rounded-xl bg-sky-500 hover:bg-sky-400 text-white py-2.5 text-sm font-black">📤 Compartir mi resultado</button>
       </section>
       <div class="grid gap-2 mt-5"><button id="resumeButton" class="rounded-xl bg-green-400 hover:bg-green-300 text-slate-950 py-3 font-black">▶ CONTINUAR</button><button id="restartButton" class="rounded-xl bg-slate-600 hover:bg-slate-500 py-2.5 font-bold">↻ Reiniciar partida</button><button id="menuButton" class="rounded-xl bg-rose-950/60 hover:bg-rose-900/70 border border-rose-300/20 py-2.5 font-bold">⌂ Menú principal</button></div>
-      <div class="mt-4 bg-slate-900/70 rounded-xl p-3 space-y-3 text-sm text-left"><label class="flex items-center justify-between">🎵 Música <input id="musicPause" type="checkbox" class="accent-yellow-400 w-4 h-4"></label><label class="flex items-center justify-between">🔊 Sonidos <input id="sfxPause" type="checkbox" class="accent-yellow-400 w-4 h-4"></label><label class="flex items-center justify-between gap-4">Volumen <input id="volumePause" type="range" min="0" max="100" class="w-36 accent-yellow-400"></label><button id="audioTestPause" type="button" class="rounded-xl bg-emerald-600/25 border border-emerald-400/40 px-3 py-2 text-xs font-black text-emerald-200">🔊 Probar sonido</button></div>
+      <div class="mt-4 bg-slate-900/70 rounded-xl p-3 space-y-3 text-sm text-left"><p id="musicScenePause" class="audio-scene-label">Banda sonora: partida</p><label class="flex items-center justify-between">🎵 Música <input id="musicPause" type="checkbox" class="accent-yellow-400 w-4 h-4"></label><label class="flex items-center justify-between">🔊 Sonidos <input id="sfxPause" type="checkbox" class="accent-yellow-400 w-4 h-4"></label><label class="flex items-center justify-between gap-4">Volumen <input id="volumePause" type="range" min="0" max="100" class="w-36 accent-yellow-400"></label><button id="audioTestPause" type="button" class="rounded-xl bg-emerald-600/25 border border-emerald-400/40 px-3 py-2 text-xs font-black text-emerald-200">🔊 Probar sonido</button></div>
     </div>
   </div>
 
@@ -245,7 +294,7 @@
   <div id="shopOverlay" class="hidden fixed inset-0 z-40 bg-slate-950/85 backdrop-blur-md items-center justify-center p-2 sm:p-4">
     <div class="modal-panel max-w-xl w-full max-h-[94dvh] overflow-y-auto overscroll-contain rounded-3xl border border-amber-300/30 bg-slate-800 p-3 sm:p-5 shadow-2xl">
       <div class="flex items-center justify-between gap-2"><div><p class="text-[10px] tracking-widest font-bold text-yellow-300">PISO SUPERADO</p><h2 class="text-2xl sm:text-3xl font-black">🛒 TIENDA</h2></div><div id="shopCoinsUI" class="px-3 py-2 bg-yellow-400/10 border border-yellow-300/30 rounded-xl text-yellow-200 font-black text-lg">🪙 0</div></div>
-      <p class="mt-1 text-xs text-slate-400">Construye combinaciones de reliquias y poderes para el siguiente piso.</p>
+      <p class="mt-1 text-xs text-slate-400">Construye combinaciones de reliquias y poderes para el siguiente piso.</p><p class="mt-1 text-[10px] text-amber-200/70">♫ Banda sonora: tienda · ambiente de mercado</p>
       <div class="flex items-center justify-between text-xs font-bold mt-2 rounded-lg bg-yellow-300/10 px-3 py-2"><span id="shopPointsAward" class="text-yellow-200">⭐ Puntos por el piso: +0</span><span id="shopScoreTotal" class="text-slate-200">TOTAL: 0</span></div>
       <div id="shopBreakNotice" class="hidden mt-2 rounded-lg border border-rose-400/40 bg-rose-950/50 px-3 py-2 text-xs font-bold text-rose-200" role="status"></div>
       <div id="shopBombNotice" class="hidden mt-2 rounded-lg border border-rose-400/40 bg-rose-950/65 px-3 py-2 text-xs font-bold text-rose-100" role="status"><span id="shopBombText"></span><button id="shopDefuseButton" class="block mt-2 rounded-lg border border-amber-300 bg-amber-700 px-3 py-1.5 text-xs font-black disabled:opacity-40">🧯 Desactivar bomba</button></div>
@@ -270,6 +319,30 @@
     </div>
   </div>
 
-  <script src="script.js" defer></script>
+<!-- Ayuda contextual: también funciona con teclado y botón de información en móviles. -->
+<div id="helpTooltip" class="help-tooltip hidden" role="tooltip" aria-hidden="true">
+  <strong id="helpTitle"></strong>
+  <p id="helpText"></p>
+</div>
+
+<!-- Tutorial progresivo: detiene el reloj hasta que se cierra. -->
+<div id="tutorialLayer" class="tutorial-layer hidden" role="dialog" aria-modal="true" aria-labelledby="tutorialTitle">
+  <div class="tutorial-blocker"></div>
+  <div id="tutorialSpotlight" class="tutorial-spotlight" aria-hidden="true"></div>
+  <section id="tutorialPanel" class="tutorial-panel" tabindex="-1">
+    <div class="tutorial-topline"><span id="tutorialChapter" class="tutorial-chapter">PRIMEROS PASOS</span><span id="tutorialProgress">1 / 7</span></div>
+    <div class="tutorial-progress-track"><span id="tutorialProgressFill"></span></div>
+    <h2 id="tutorialTitle">Bienvenido</h2>
+    <p id="tutorialText"></p>
+    <div class="tutorial-actions">
+      <button id="tutorialSkip" class="tutorial-skip" type="button">Saltar</button>
+      <button id="tutorialPrev" class="tutorial-prev" type="button">Atrás</button>
+      <button id="tutorialNext" class="tutorial-next" type="button">Siguiente <svg class="ui-glyph" aria-hidden="true"><use href="#glyph-play"></use></svg></button>
+    </div>
+  </section>
+</div>
+
+<script src="script.js" defer></script>
+
 </body>
 </html>
