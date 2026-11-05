@@ -2,1875 +2,1253 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Números Ciegos: Roguelike</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b1224" />
+  <title>Números Ciegos — Bombas y Sonido Mejorado</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    :root{
-      --bg:#00d6ff;
-      --panel2:#2a2a2a;
-      --slot:#a1b1c0;
-      --slotText:#6a7580;
-      --ok:#00c400;
-      --placed:#ffffff;
-      --danger:#ff9191;
-      --accent:#ffe600;
-      --gold:#ffe600;
-    }
-    *{ box-sizing:border-box; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
-    body{ margin:0; background:var(--bg); display:flex; justify-content:center; padding:16px; overflow-x:hidden; }
+    /* Tailwind se encarga de la interfaz. Aquí solo hay efectos especiales. */
+    html { color-scheme: dark; }
+    body { background: radial-gradient(ellipse at 15% 10%, #233b68 0%, #111b34 42%, #090e1d 100%); }
+    button { touch-action: manipulation; }
+    button:disabled { cursor: not-allowed; }
+    .slot-available { animation: breathe 1.3s ease-in-out infinite; }
+    .joker-shine { background-image: linear-gradient(110deg, transparent 15%, #ffffff1c 44%, transparent 70%); background-size: 250% 100%; animation: shine 5s linear infinite; }
+    .shop-card { transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease; }
+    .shop-card:not(.sold):hover { transform: translateY(-3px); }
+    .modal-panel { animation: appear .24s cubic-bezier(.2,1.25,.3,1) both; }
+    .floating-particle { position: fixed; width: 8px; height: 8px; z-index: 100; pointer-events: none; border-radius: 2px; animation: scatter .75s cubic-bezier(.2,.7,.25,1) forwards; }
+    .floating-money { position: fixed; pointer-events: none; z-index: 110; font-weight: 900; color: #facc15; text-shadow: 0 2px 5px #0009; animation: rise .95s ease-out forwards; }
+    .pulse-badge { animation: ping-soft .55s ease-out; }
+    .shake { animation: shake .26s ease-out; }
+    .floating-score { position:fixed; pointer-events:none; z-index:110; color:#fef08a; font-size:1.15rem; font-weight:1000; text-shadow:0 2px 9px #000b; animation:rise 1.05s ease-out forwards; }
+    .relic-breaking { animation:crack .53s ease-in forwards; }
+    .combo-reveal { animation: comboReveal .8s cubic-bezier(.15,1.4,.45,1) both; }
+    .impact-flash { animation: impactFlash .34s ease-out both; }
+    .bomb-alert { animation: bombAlert .6s ease-in-out infinite alternate; }
+    .rare-glow { animation: rareGlow 1s ease-in-out infinite alternate; }
+    .hazard-impact { animation: hazardImpact .4s ease-out; }
+    /* Alerta flotante no bloqueante: en móvil se puede contraer a una pequeña píldora. */
+    .bomb-pop-enter { animation: bombPopEnter .44s cubic-bezier(.14,1.45,.36,1) both; }
+    .bomb-pop-critical { animation: bombCritical .34s ease-in-out infinite alternate; }
+    .bomb-ring { background: conic-gradient(#f43f5e var(--angle, 360deg), #431e35 0); }
+    .bomb-pop-compact #bombExpanded { display:none; }
+    .bomb-pop-compact #bombCollapsed { display:flex; }
+    #bombPopup:not(.bomb-pop-compact) #bombCollapsed { display:none; }
+    @keyframes bombPopEnter { from{opacity:0;transform:translateY(-26px) scale(.75) rotate(-3deg)} 60%{opacity:1;transform:translateY(3px) scale(1.045) rotate(1deg)} to{opacity:1;transform:translateY(0) scale(1) rotate(0)} }
+    @keyframes bombCritical { from{filter:brightness(1);box-shadow:0 0 14px #fb7185ab,0 15px 35px #000a} to{filter:brightness(1.2);box-shadow:0 0 31px #f43f5edc,0 15px 35px #000a} }
 
-    .wrap{
-      width:min(980px, 100%);
-      display:grid;
-      gap:16px;
-      grid-template-columns: 1fr 1fr;
-      align-items:start;
-    }
-    .card{
-      background: rgba(255,255,255,0.85);
-      border-radius: 14px;
-      padding: 14px;
-      box-shadow: 0 8px 22px rgba(0,0,0,.12);
-    }
+    @keyframes bombAlert { from {box-shadow:0 0 0 1px #fb718555;} to {box-shadow:0 0 15px 3px #f43f5e9a;} }
+    @keyframes rareGlow { from{box-shadow:0 0 5px #f0abfc66;}to{box-shadow:0 0 24px #c084fcdd;} }
+    @keyframes hazardImpact {0%,100%{transform:translateX(0)}20%{transform:translateX(-5px)}45%{transform:translateX(5px)}70%{transform:translateX(-3px)}}
+    @keyframes crack { 0%{filter:brightness(1);transform:rotate(0) scale(1)} 28%{filter:brightness(2);transform:rotate(-9deg) scale(1.2)} 55%{filter:brightness(1.5) grayscale(.5);transform:rotate(8deg) scale(.86)} 100%{filter:grayscale(1);transform:rotate(26deg) scale(.3);opacity:0} }
+    @keyframes comboReveal { 0%{opacity:0; transform:translate(-50%,-15px) scale(.45) rotate(-5deg)} 28%{opacity:1;transform:translate(-50%,0) scale(1.2) rotate(3deg)} 65%{opacity:1;transform:translate(-50%,0) scale(1)} 100%{opacity:0;transform:translate(-50%,-28px) scale(.95)} }
+    @keyframes impactFlash { 0%{opacity:0} 27%{opacity:.28} 100%{opacity:0} }
 
-    /* Info */
-    #instrucciones{ background: rgba(255, 206, 206, 0.92); }
-    .infoHeader{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom: 10px; }
-    #instrucciones h1{ margin:0; }
-    #instrucciones p{ margin: 8px 0; line-height:1.35; }
-    #msg{ margin-top:10px; font-weight:900; }
-    .hint{ font-size:12px; opacity:.85; margin-top:8px; line-height:1.25; }
-    .hidden{ display:none !important; }
-
-    /* Game */
-    #game{ background: rgba(255,255,255,0.9); position:relative; }
-    .topbar{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
-      background: var(--panel2);
-      color:#fff;
-      border-radius: 12px;
-      padding: 10px 12px;
-      margin-bottom: 10px;
-      position:relative;
-      overflow:hidden;
-    }
-    .leftStats{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
-    .stat{ font-size: 14px; opacity:.95; white-space:nowrap; position:relative; }
-    .stat b{ font-size:16px; }
-
-    /* Coin pop text */
-    .floatText{
-      position:absolute;
-      right:0;
-      top:-4px;
-      transform: translateY(0);
-      font-weight:1000;
-      font-size: 13px;
-      opacity:0;
-      pointer-events:none;
-    }
-    .floatText.show{ animation: floatUp .8s ease-out forwards; }
-
-    #tablero{
-      background:#777;
-      border-radius:12px;
-      padding:10px;
-      min-height:520px;
-      position:relative;
-      overflow:hidden;
-    }
-
-    .slot{
-      height:44px;
-      border-radius:12px;
-      background: var(--slot);
-      margin:10px auto;
-      width: min(340px, 100%);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      cursor:pointer;
-      user-select:none;
-      transition: transform .06s ease, background-color .12s ease, filter .12s ease;
-      touch-action: manipulation;
-      position:relative;
-      overflow:hidden;
-    }
-    .slot:active{ transform: scale(0.992); }
-
-    .slot .num{ font-size:22px; font-weight:1000; color: var(--slotText); }
-
-    /* highlight pulse for valid slots */
-    .slot.valid{
-      background: var(--ok) !important;
-      animation: validPulse 0.9s ease-in-out infinite;
-      filter: drop-shadow(0 10px 14px rgba(0,0,0,0.18));
-    }
-
-    /* placement “juice” */
-    .slot.pop{ animation: pop .18s ease-out; }
-    .slot.flash-green::after,
-    .slot.flash-gold::after{
-      content:"";
-      position:absolute;
-      inset:-2px;
-      border-radius:14px;
-      opacity:0;
-      pointer-events:none;
-    }
-    .slot.flash-green::after{ background: radial-gradient(circle at 50% 50%, rgba(0,255,120,.9), rgba(0,255,120,0) 60%); }
-    .slot.flash-gold::after{ background: radial-gradient(circle at 50% 50%, rgba(255,230,0,.95), rgba(255,230,0,0) 60%); }
-    .slot.flash-green{ animation: flash 0.35s ease-out; }
-    .slot.flash-gold{ animation: flash 0.35s ease-out; }
-
-    .controls{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:10px;
-      margin-top:10px;
-    }
-    .box{ border-radius:12px; padding:10px; background: rgba(0,0,0,0.06); }
-
-    #currentToken{
-      border-radius:12px;
-      background:#fff;
-      border:2px solid rgba(0,0,0,.08);
-      padding:10px 12px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      min-height:48px;
-      gap:10px;
-    }
-    #currentValue{ font-size:22px; font-weight:1000; }
-    #currentType{ font-size:18px; font-weight:1000; white-space:nowrap; }
-
-    .btnRow{ display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; }
-    button{
-      border:none;
-      border-radius:12px;
-      padding:10px 12px;
-      cursor:pointer;
-      font-weight:1000;
-      transition: filter .12s ease, transform .06s ease;
-      touch-action: manipulation;
-    }
-    button:active{ transform: scale(0.992); }
-    button:hover{ filter: brightness(0.98); }
-    button:disabled{ opacity:.5; cursor:not-allowed; }
-
-    #btnStart{ background: var(--accent); }
-    #btnStore{ background: #44d0ff; }
-
-    .smallBtn{
-      border-radius:10px;
-      padding:8px 10px;
-      font-weight:1000;
-      background: rgba(255,255,255,.14);
-      color:#fff;
-    }
-
-    .storedTitle{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
-    .tag{
-      display:inline-block;
-      padding:2px 8px;
-      border-radius:999px;
-      font-size:12px;
-      font-weight:1000;
-      background: rgba(255,255,255,.16);
-      margin-left:6px;
-      color:#fff;
-    }
-    .storedGrid{ display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; }
-    .stored{
-      background:#fff;
-      border-radius:12px;
-      border:2px solid rgba(0,0,0,.08);
-      padding:10px 8px;
-      text-align:center;
-      cursor:pointer;
-      user-select:none;
-      min-height:52px;
-      display:flex;
-      flex-direction:column;
-      justify-content:center;
-      gap:4px;
-      touch-action: manipulation;
-      transition: transform .08s ease, filter .12s ease;
-    }
-    .stored:active{ transform: scale(0.99); }
-    .stored .v{ font-weight:1000; font-size:18px; }
-    .stored .t{ font-weight:1000; font-size:14px; opacity:.9; }
-    .stored.selected{ outline: 3px solid rgba(0, 140, 255, .6); filter: drop-shadow(0 8px 12px rgba(0,0,0,.12)); }
-
-    /* Overlays */
-    .overlay{
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,.55);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:16px;
-      z-index: 999;
-      backdrop-filter: blur(2px);
-    }
-    .modal{
-      width: min(560px, 100%);
-      background: rgba(255,255,255,0.95);
-      border-radius: 16px;
-      box-shadow: 0 18px 50px rgba(0,0,0,.25);
-      padding: 14px;
-      transform: translateY(10px);
-      opacity: 0;
-    }
-    .overlay:not(.hidden) .modal{
-      animation: modalIn .22s ease-out forwards;
-    }
-    .modal h1, .modal h2{ margin: 0 0 10px; }
-    .modal p{ margin: 8px 0; line-height:1.35; }
-    .modal .row{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-top: 10px;
-    }
-    .modal .row button{ flex: 1 1 140px; }
-    .opt{
-      margin-top: 10px;
-      background: rgba(0,0,0,0.06);
-      border-radius: 12px;
-      padding: 10px;
-      display:grid;
-      gap:10px;
-    }
-    .opt label{ display:flex; align-items:center; justify-content:space-between; gap:10px; font-weight:900; }
-    .opt input[type="range"]{ width: 180px; }
-
-    /* Shop */
-    .shopHeader{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-bottom: 8px;
-    }
-    .coinPill{
-      background: rgba(0,0,0,0.08);
-      padding: 6px 10px;
-      border-radius: 999px;
-      font-weight: 1000;
-      white-space: nowrap;
-      position:relative;
-      overflow:visible;
-    }
-    .coinPill.bounce{ animation: coinBounce .25s ease-out; }
-    .shopGrid{ display:grid; grid-template-columns: 1fr; gap: 10px; margin-top: 10px; }
-    .shopItem{
-      background: rgba(0,0,0,0.05);
-      border-radius: 12px;
-      padding: 10px;
-      display:flex;
-      gap:10px;
-      align-items:flex-start;
-      justify-content:space-between;
-      flex-wrap:wrap;
-      transform: translateY(0);
-    }
-    .shopItem.shake{ animation: shake 0.35s ease-out; }
-    .shopItem.sold{ opacity: .7; filter: grayscale(.2); }
-    .shopItem.boughtFx{ animation: boughtFx .38s ease-out; }
-    .shopItem h3{ margin:0 0 6px; }
-    .shopItem p{ margin:0; opacity: .9; }
-    .price{ font-weight: 1000; white-space: nowrap; margin-top: 4px; }
-    .shopLeft{ flex: 1 1 260px; min-width: 220px; }
-    .shopRight{ display:flex; flex-direction:column; gap:8px; align-items:stretch; flex: 0 0 160px; }
-    .shopRight button{ width: 100%; }
-    .shopMini{
-      margin-top: 10px;
-      font-size: 12px;
-      opacity: .9;
-      line-height: 1.25;
-      background: rgba(0,0,0,0.05);
-      border-radius: 12px;
-      padding: 10px;
-    }
-
-    /* Toast */
-    #toast{
-      position: fixed;
-      left: 50%;
-      top: 14px;
-      transform: translateX(-50%) translateY(-10px);
-      background: rgba(20,20,20,0.85);
-      color:#fff;
-      padding: 10px 12px;
-      border-radius: 999px;
-      font-weight: 1000;
-      opacity:0;
-      z-index: 1200;
-      pointer-events:none;
-      white-space: nowrap;
-      max-width: 92vw;
-      overflow:hidden;
-      text-overflow: ellipsis;
-      box-shadow: 0 10px 24px rgba(0,0,0,.28);
-    }
-    #toast.show{ animation: toastInOut 1.25s ease-out forwards; }
-
-    /* Screen shake */
-    .shakeScreen{ animation: screenShake .35s ease-out; }
-
-    /* Confetti canvas */
-    #fxCanvas{
-      position: fixed;
-      inset: 0;
-      pointer-events:none;
-      z-index: 1100;
-    }
-
-    /* Animations */
-    @keyframes modalIn{
-      from{ transform: translateY(14px); opacity:0; }
-      to{ transform: translateY(0px); opacity:1; }
-    }
-    @keyframes pop{
-      0%{ transform: scale(1); }
-      60%{ transform: scale(1.05); }
-      100%{ transform: scale(1); }
-    }
-    @keyframes flash{
-      0%{ filter: brightness(1); }
-      40%{ filter: brightness(1.2); }
-      100%{ filter: brightness(1); }
-    }
-    @keyframes validPulse{
-      0%{ transform: scale(1); }
-      50%{ transform: scale(1.01); }
-      100%{ transform: scale(1); }
-    }
-    @keyframes shake{
-      0%{ transform: translateX(0); }
-      20%{ transform: translateX(-6px); }
-      40%{ transform: translateX(6px); }
-      60%{ transform: translateX(-4px); }
-      80%{ transform: translateX(4px); }
-      100%{ transform: translateX(0); }
-    }
-    @keyframes coinBounce{
-      0%{ transform: scale(1); }
-      60%{ transform: scale(1.12); }
-      100%{ transform: scale(1); }
-    }
-    @keyframes floatUp{
-      0%{ opacity:0; transform: translateY(8px); }
-      25%{ opacity:1; }
-      100%{ opacity:0; transform: translateY(-18px); }
-    }
-    @keyframes toastInOut{
-      0%{ opacity:0; transform: translateX(-50%) translateY(-10px) scale(0.98); }
-      15%{ opacity:1; transform: translateX(-50%) translateY(0px) scale(1); }
-      75%{ opacity:1; transform: translateX(-50%) translateY(0px) scale(1); }
-      100%{ opacity:0; transform: translateX(-50%) translateY(-10px) scale(0.98); }
-    }
-    @keyframes screenShake{
-      0%{ transform: translate(0,0); }
-      15%{ transform: translate(-6px, 2px); }
-      30%{ transform: translate(5px, -2px); }
-      45%{ transform: translate(-4px, 2px); }
-      60%{ transform: translate(4px, -2px); }
-      100%{ transform: translate(0,0); }
-    }
-    @keyframes boughtFx{
-      0%{ transform: translateY(0) scale(1); filter: brightness(1); }
-      45%{ transform: translateY(-3px) scale(1.02); filter: brightness(1.1); }
-      100%{ transform: translateY(0) scale(1); filter: brightness(1); }
-    }
-
-    /* Responsive */
-    @media (max-width: 900px){
-      body{ padding:12px; }
-      .wrap{ grid-template-columns: 1fr; }
-      #tablero{ min-height: unset; }
-      .slot{ width: 100%; max-width: 520px; }
-    }
-    @media (max-width: 520px){
-      body{ padding:10px; }
-      .card{ padding:12px; }
-      .controls{ grid-template-columns: 1fr; }
-      #tablero{ padding:8px; }
-      .slot{ height:42px; margin:8px auto; }
-      .slot .num{ font-size:20px; }
-      #currentValue{ font-size:20px; }
-      #currentType{ font-size:16px; }
-      .btnRow button{ flex: 1 1 auto; }
-      .opt input[type="range"]{ width: 140px; }
-      .shopRight{ flex: 1 1 160px; }
-      #toast{ top: 10px; }
-    }
+    @keyframes breathe { 0%,100% { box-shadow:0 0 0 1px #4ade80a9,0 0 8px #22c55e34; } 50% {box-shadow:0 0 0 3px #4ade8069,0 0 17px #22c55e66;} }
+    @keyframes shine { to { background-position: -250% 0; } }
+    @keyframes appear { from { opacity: 0; transform: translateY(14px) scale(.97); } to {opacity:1;transform:none;} }
+    @keyframes scatter { to {opacity:0; transform:translate(var(--dx),var(--dy)) rotate(var(--rot)) scale(.3);} }
+    @keyframes rise { from {opacity:0;transform:translateY(2px) scale(.8);} 20% {opacity:1;} to {opacity:0;transform:translateY(-55px) scale(1.1);} }
+    @keyframes ping-soft { 0%{transform:scale(1);} 45%{transform:scale(1.18);} 100%{transform:scale(1);} }
+    @keyframes shake { 25%{transform:translateX(-4px);} 50%{transform:translateX(4px);} 75%{transform:translateX(-2px);} }
+    @media (prefers-reduced-motion: reduce) { *,*::before,*::after { animation-duration:.01ms!important; animation-iteration-count:1!important; scroll-behavior:auto!important; transition-duration:.01ms!important;} }
   </style>
 </head>
+<body class="min-h-screen text-slate-100 antialiased px-3 py-3 sm:px-5 sm:py-6">
+  <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-[70] hidden max-w-[90vw] rounded-xl border border-white/20 bg-slate-900/95 px-4 py-2 text-center text-sm font-bold shadow-2xl pointer-events-none" role="status" aria-live="polite"></div>
+  <!-- Popup persistente: cuenta atrás visible sin bloquear el tablero. -->
+  <aside id="bombPopup" class="hidden fixed z-[38] top-3 right-3 w-[min(355px,calc(100vw-24px))] rounded-2xl border-2 border-rose-300/90 bg-gradient-to-br from-rose-950 via-[#4f102e] to-slate-950 text-white shadow-[0_18px_45px_#000c] overflow-hidden" role="region" aria-live="off" aria-label="Alerta de bomba activa">
+    <div id="bombExpanded" class="px-3.5 pt-3.5 pb-3">
+      <div class="flex items-start justify-between gap-2">
+        <div class="flex items-center gap-2"><span class="text-4xl drop-shadow-[0_0_15px_#fb7185]" aria-hidden="true">💣</span><div><div class="font-black text-base tracking-tight text-rose-100">¡BOMBA! ¡RÁPIDO!</div><div class="text-[11px] font-bold text-rose-200">Colócala antes de que explote</div></div></div>
+        <button id="bombMinimize" type="button" class="shrink-0 rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs font-bold" aria-label="Reducir alerta de bomba">—</button>
+      </div>
+      <div class="mt-2.5 flex items-center gap-3 rounded-xl bg-black/35 p-2.5">
+        <div id="bombDial" class="bomb-ring w-[78px] h-[78px] rounded-full grid place-items-center shrink-0" style="--angle:360deg"><div class="w-[65px] h-[65px] rounded-full bg-rose-950 grid place-items-center"><span id="bombPopupTime" class="text-xl sm:text-2xl font-black tabular-nums text-white" aria-live="off">13.0</span></div></div>
+        <div class="min-w-0 flex-1"><div class="text-[10px] tracking-widest font-black text-rose-200">SEGUNDOS RESTANTES</div><p id="bombPopupAdvice" class="mt-1 text-xs font-semibold leading-tight text-rose-50">Elige una casilla verde o pulsa Guardar.</p><div class="mt-2 h-2 bg-rose-950 rounded-full overflow-hidden"><div id="bombPopupBar" class="h-full w-full bg-gradient-to-r from-yellow-300 via-orange-400 to-rose-500 transition-[width] duration-100"></div></div></div>
+      </div>
+      <div class="mt-2.5 flex gap-2">
+        <button id="bombPopupStore" class="flex-1 bg-sky-500 hover:bg-sky-400 disabled:bg-slate-700 disabled:text-slate-400 rounded-lg px-2 py-2.5 text-xs font-black">📦 Guardar bomba</button>
+        <button id="bombPopupDefuse" class="flex-1 bg-amber-400 hover:bg-amber-300 text-slate-950 disabled:bg-slate-700 disabled:text-slate-400 rounded-lg px-2 py-2.5 text-xs font-black">🧯 Desactivar</button>
+      </div>
+      <p class="mt-2 text-[10px] text-rose-200/80">También puedes tocar una casilla válida del tablero. Guardarla pausa la mecha, pero caduca tras 3 pisos.</p>
+    </div>
+    <button id="bombCollapsed" class="hidden w-full items-center justify-between gap-2 px-3 py-2.5 text-left" type="button" aria-label="Abrir alerta de bomba">
+      <span class="font-black text-sm">💣 ¡BOMBA ACTIVA!</span><span class="flex items-center gap-1.5"><strong id="bombCompactTime" class="tabular-nums font-black text-xl text-yellow-200">13.0s</strong><span aria-hidden="true">▾</span></span>
+    </button>
+  </aside>
+  <span id="bombAnnouncement" class="sr-only" role="alert" aria-live="assertive"></span>
+  <div id="impactFlash" class="hidden fixed inset-0 pointer-events-none z-[55] bg-yellow-300"></div>
+  <div id="comboBanner" class="hidden pointer-events-none fixed top-[22%] left-1/2 z-[72] -translate-x-1/2 whitespace-nowrap text-center font-black text-3xl sm:text-5xl text-yellow-200 drop-shadow-[0_4px_8px_#000]">🔥 COMBO</div>
 
-<body>
-  <canvas id="fxCanvas"></canvas>
-  <div id="toast"></div>
+  <main class="mx-auto max-w-xl">
+    <header class="mb-3 flex justify-between items-center gap-3">
+      <div class="flex items-center gap-2">
+        <div class="w-10 h-10 grid place-items-center rounded-xl bg-gradient-to-br from-yellow-300 to-orange-500 shadow-lg shadow-orange-500/20 text-slate-950 text-2xl font-black">#</div>
+        <div><h1 class="text-lg leading-none sm:text-xl font-black tracking-tight">NÚMEROS <span class="text-yellow-300">CIEGOS</span></h1><p class="text-[11px] font-medium text-slate-400 tracking-widest mt-1">ROGUELIKE · RIESGO Y RECOMPENSA</p></div>
+      </div>
+      <div class="flex gap-1.5">
+        <button id="infoButton" class="rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 px-3 py-2 text-xs font-bold" aria-expanded="false" aria-controls="infoPanel">❔ Info</button>
+        <button id="pauseButton" class="rounded-lg bg-slate-700 hover:bg-slate-600 px-3 py-2 text-xs font-bold disabled:opacity-40" disabled>⏸ Pausa</button>
+      </div>
+    </header>
 
-  <!-- MENÚ PRINCIPAL -->
-  <div id="overlayMenu" class="overlay">
-    <div class="modal">
-      <h1>Números Ciegos</h1>
-      <p>
-        Ordena los números de menor a mayor. Puedes <b>guardar hasta 3</b> y hay números especiales 🟩🟨.
-        Entre pisos aparece una <b>tienda</b> estilo “Balatro”.
-      </p>
-      <div class="row">
-        <button id="menuPlay" style="background: var(--accent);">▶ Jugar</button>
-        <button id="menuToggleInfo" style="background:#eaeaea;">Info: Mostrar/Ocultar</button>
+    <section class="rounded-2xl border border-white/10 bg-slate-800/90 shadow-2xl shadow-black/30 p-3 sm:p-4">
+      <div class="grid grid-cols-4 gap-1.5 sm:gap-2 mb-3">
+        <div class="rounded-lg bg-slate-900/75 text-center py-2"><p class="text-[10px] text-slate-400">PISO</p><strong id="floorUI" class="text-base sm:text-lg">1</strong></div>
+        <div class="rounded-lg bg-slate-900/75 text-center py-2"><p class="text-[10px] text-slate-400">TIEMPO</p><strong id="timeUI" class="text-base sm:text-lg tabular-nums">1:30</strong></div>
+        <div class="rounded-lg bg-slate-900/75 text-center py-2"><p class="text-[10px] text-slate-400">RANGO</p><strong id="rangeUI" class="text-base sm:text-lg">1–50</strong></div>
+        <div class="rounded-lg bg-yellow-400/10 border border-yellow-400/20 text-center py-2"><p class="text-[10px] text-yellow-200">MONEDAS</p><strong id="coinsUI" class="text-base sm:text-lg text-yellow-300">🪙 0</strong></div>
       </div>
 
-      <div class="opt">
-        <label>Música <input id="musicToggle" type="checkbox" checked /></label>
-        <label>Sonidos <input id="sfxToggle" type="checkbox" checked /></label>
-        <label>Volumen <input id="volSlider" type="range" min="0" max="100" value="70" /></label>
+      <div class="flex items-center justify-between gap-2 px-1 mb-1 text-xs sm:text-sm">
+        <span class="text-yellow-300 font-black">⭐ PUNTOS: <strong id="scoreUI" class="tabular-nums text-base">0</strong></span>
+        <span class="text-slate-400 font-semibold">🏆 Récord: <strong id="bestScoreUI" class="text-slate-200 tabular-nums">0</strong></span>
+      </div>
+      <div class="flex items-center justify-between gap-1 rounded-lg bg-rose-950/25 border border-rose-400/15 px-2 py-1.5 mb-2 text-[10px] sm:text-xs">
+        <span id="dangerUI" class="text-orange-200 font-bold">🌱 Piso de aprendizaje</span>
+        <span id="streakUI" class="text-yellow-300 font-black whitespace-nowrap">🔥 Racha 0 · x1</span>
+      </div>
+      <div class="rounded-xl border border-indigo-400/30 bg-gradient-to-r from-indigo-950 to-slate-900 px-3 py-2.5 mb-2.5 flex items-center justify-between gap-3">
+        <div class="min-w-0"><p class="text-[10px] uppercase tracking-wider text-indigo-300 font-bold">Número en mano</p><div class="flex items-center gap-2"><span id="currentUI" class="text-3xl leading-tight font-black">—</span><span id="kindUI" class="text-xs text-slate-300 font-semibold truncate">Pulsa Jugar</span></div></div>
+        <div class="flex gap-1.5 flex-shrink-0">
+          <button id="storeButton" disabled class="bg-sky-500 hover:bg-sky-400 disabled:opacity-30 rounded-lg px-2.5 py-2 text-xs sm:text-sm font-black">📦 Guardar</button>
+          <button id="rerollButton" disabled class="bg-violet-500 hover:bg-violet-400 disabled:opacity-30 rounded-lg px-2.5 py-2 text-xs sm:text-sm font-black">🎲 <span id="rerollCount">2</span></button>
+        </div>
+      </div>
+      <div id="bombWarning" class="hidden rounded-xl border border-rose-400 bg-rose-950/70 p-2.5 mb-2 bomb-alert" role="status" aria-live="off">
+        <div class="flex items-center justify-between gap-2"><strong class="text-xs sm:text-sm text-rose-100">💣 ¡BOMBA ACTIVA! Colócala o guárdala</strong><strong id="bombSeconds" class="text-xl font-black text-rose-300 tabular-nums">12.0s</strong></div>
+        <div class="mt-1.5 bg-rose-950 rounded-full h-2 overflow-hidden"><div id="bombBar" class="h-full bg-gradient-to-r from-rose-500 via-orange-400 to-yellow-300 transition-[width] duration-100" style="width:100%"></div></div>
       </div>
 
-      <div class="hint">Tip: Dopamina = luces + monedas + confeti + tienda 😈</div>
+      <div class="flex justify-between gap-2 items-center text-[11px] text-slate-400 mb-1.5"><span>MENOR <span class="text-green-400">↓ orden ascendente ↓</span> MAYOR</span><span id="filledUI">0/5</span></div>
+      <div id="board" class="rounded-xl bg-slate-950/60 p-2 space-y-1.5" aria-label="Tablero de números ordenados"></div>
+
+      <div class="mt-2.5 grid grid-cols-[1fr_auto] gap-2 items-center">
+        <div class="min-w-0"><p class="text-[10px] uppercase text-slate-400 font-black tracking-wide">Números guardados <span id="storedCountUI" class="text-sky-300">0/1</span> <span id="storageLockUI" class="text-violet-300"></span></p><div id="storage" class="grid grid-cols-3 gap-1.5 mt-1"></div></div>
+        <div class="self-end flex gap-1"><button id="defuseButton" disabled class="border border-amber-300/30 bg-amber-900/50 hover:bg-amber-800/60 disabled:opacity-35 rounded-xl h-12 min-w-[66px] px-2 text-xs font-bold">🧯 <span id="defuseCount">0</span></button><button id="eraserButton" disabled class="border border-rose-300/30 bg-rose-900/40 hover:bg-rose-800/60 disabled:opacity-35 rounded-xl h-12 min-w-[66px] px-2 text-xs font-bold">🧽 <span id="eraserCount">0</span></button></div>
+      </div>
+
+      <div class="mt-2.5 flex flex-wrap justify-between gap-1.5 items-center"><span class="text-[10px] uppercase tracking-wider text-slate-400 font-black">🃏 Reliquias <span id="jokerCountUI">0/5</span></span><button id="manageRelicsButton" class="rounded-md bg-indigo-600/30 border border-indigo-300/20 px-2 py-1 text-[10px] font-bold disabled:opacity-40">⚙️ Gestionar / vender</button></div>
+      <div id="jokers" class="mt-1.5 flex flex-wrap gap-1.5 min-h-8"><span class="text-xs text-slate-500">Todavía no tienes reliquias.</span></div>
+      <p id="statusUI" class="text-center mt-2.5 min-h-5 text-xs font-semibold text-slate-300" aria-live="polite">Ordena los números para ganar.</p>
+    </section>
+
+    <section id="infoPanel" class="hidden mt-3 rounded-xl border border-sky-400/20 bg-slate-800/90 p-3 text-xs leading-relaxed text-slate-300 space-y-1.5">
+      <p class="font-black text-white text-sm">¿Cómo se juega?</p>
+      <p>Coloca números en orden creciente. Solo puedes pulsar casillas verdes. Puedes guardar <b>hasta 3 números</b> y recuperarlos cuando quieras sin perder el que tienes en mano.</p>
+      <p>🟩 <b>Semilla:</b> completa la casilla anterior con un número menor. 🟦 <b>Espejo:</b> completa la siguiente con uno mayor. 🟨 <b>Comodín:</b> ocupa cualquier hueco y no rompe el orden.</p>
+      <p>🟪 <b>Reloj:</b> +12 segundos. 💗 <b>Corazón:</b> +3 monedas y el siguiente número será especial. 🌈 <b>Arcoíris:</b> ocupa dos casillas libres si están juntas.</p>
+      <p>En la tienda puedes comprar números especiales, dados, borradores y reliquias <b>frágiles</b>. Cada reliquia muestra su probabilidad de romperse al completar un piso. Pulsa <b>Gestionar / vender</b> para liberar huecos y recuperar algunas monedas.</p>
+      <p>🛟 <b>Última oportunidad:</b> al rescatarte tiene un <b>90% de probabilidad de romperse</b>. Si sobrevive, debe esperar dos pisos para volver a activarse. Además puede romperse al superar un piso como las demás reliquias.</p>
+      <p>📦 Empiezas con <b>1 hueco</b>. Compra hasta 2 huecos adicionales en la tienda: cuestan 8 y 14 monedas.</p>
+      <p>💣 <b>Bomba:</b> desde el piso 3. Si está activa y no la colocas a tiempo, la partida termina. Si la guardas, la mecha se pausa, pero debes usarla durante los 3 pisos disponibles (el de guardado y los dos siguientes).</p>
+      <p>☠️ <b>Maldito:</b> al colocarlo pierdes 10 segundos, pero ganas 160 puntos extra. 🧊 <b>Hielo:</b> bloquea temporalmente el uso de guardados durante tus dos próximas colocaciones.</p>
+      <p>🌟 <b>Milagro legendario:</b> ~0,1% de probabilidad natural desde el piso 3. Al colocarlo, completa todas las casillas que queden vacías, sin alterar números anteriores.</p>
+      <p>🧯 Puedes comprar un desactivador de bombas en la tienda; gástalo para eliminar una bomba sin recompensa.</p>
+      <p>🔥 A partir del piso 5, guardar y cambiar números consume segundos; desde el piso 6 se reducen las ayudas y aparecen menos especiales. Una racha de colocaciones seguidas multiplica los puntos, pero se pierde al guardar, usar dados o borrar.</p>
+      <p>⭐ <b>Puntos:</b> +100 por casilla nueva (con multiplicador por racha), +40 por número especial y +75 por autollenado. Cada piso superado da un bono por nivel y tiempo restante. Una casilla borrada no vuelve a dar puntos.</p>
+      <p>🏆 <b>Récords:</b> se guardan las 5 mejores partidas solo en este navegador. Puedes compartir tu puntuación por mensaje con un amigo.</p>
+    </section>
+    <p class="mt-3 text-center text-[10px] text-slate-500">Juego experimental · HTML + Tailwind + JavaScript · Sin archivos de audio</p>
+  </main>
+
+  <!-- Menú principal -->
+  <div id="menuOverlay" class="fixed inset-0 z-40 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3">
+    <div class="modal-panel max-w-sm w-full max-h-[94dvh] overflow-y-auto overscroll-contain rounded-3xl bg-slate-800 border border-white/15 p-5 text-center shadow-2xl">
+      <div class="mx-auto mb-3 w-16 h-16 rounded-2xl bg-gradient-to-br from-yellow-300 via-orange-400 to-pink-500 text-slate-900 text-5xl font-black grid place-items-center rotate-3">#</div>
+      <h2 class="text-3xl font-black tracking-tight">NÚMEROS <span class="text-yellow-300">CIEGOS</span></h2>
+      <p class="mt-2 text-sm text-slate-300">Ordena, consigue números especiales, combina reliquias y llega tan lejos como puedas.</p>
+      <label for="playerName" class="block text-left text-xs font-bold text-slate-300 mt-4 mb-1">Tu nombre para el ranking</label>
+      <input id="playerName" maxlength="18" autocomplete="nickname" placeholder="Jugador" class="w-full rounded-xl bg-slate-950/80 border border-white/15 px-3 py-2.5 text-white text-sm outline-none focus:ring-2 focus:ring-yellow-400" />
+      <button id="playButton" class="mt-3 w-full rounded-xl bg-yellow-300 hover:bg-yellow-200 text-slate-950 py-3.5 font-black text-lg shadow-lg shadow-yellow-400/20">▶ NUEVA PARTIDA</button>
+      <div class="mt-4 text-left rounded-xl border border-yellow-300/20 bg-slate-900/65 p-3">
+        <div class="flex items-center justify-between gap-2 mb-2"><h3 class="text-sm font-black text-yellow-200">🏆 TUS 5 MEJORES PARTIDAS</h3><button id="shareBestButton" class="rounded-lg bg-sky-600/50 disabled:opacity-30 px-2.5 py-1.5 text-[10px] font-bold">Compartir mejor</button></div>
+        <div id="menuTop5" class="space-y-1.5 text-xs" aria-live="polite"></div>
+        <p id="storageWarning" class="hidden text-amber-300 text-[10px] mt-2">⚠️ Tu navegador está bloqueando el almacenamiento local. Los récords podrían no guardarse al cerrar.</p>
+      </div>
+      <div class="mt-4 bg-slate-900/70 rounded-xl px-3 py-3 space-y-3 text-sm text-left">
+        <label class="flex items-center justify-between">🎵 Música <input id="musicMenu" type="checkbox" checked class="accent-yellow-400 w-4 h-4"></label>
+        <label class="flex items-center justify-between">🔊 Sonidos <input id="sfxMenu" type="checkbox" checked class="accent-yellow-400 w-4 h-4"></label>
+        <label class="flex items-center justify-between gap-4">Volumen <input id="volumeMenu" type="range" min="0" max="100" value="80" class="w-36 accent-yellow-400"></label>
+      </div>
+      <button id="audioTestMenu" type="button" class="mt-2.5 w-full rounded-xl border border-emerald-400/50 bg-emerald-500/15 px-3 py-2 text-xs font-black text-emerald-200 hover:bg-emerald-500/25">🔊 Probar sonido (desbloquea audio en móvil)</button>
+      <div class="mt-3 text-xs text-slate-400">🌈 Especiales · 💔 Reliquias frágiles · 🔥 Rachas</div>
     </div>
   </div>
 
-  <!-- MENÚ DE PAUSA / GAME OVER -->
-  <div id="overlayPause" class="overlay hidden" aria-hidden="true">
-    <div class="modal">
-      <h2 id="pauseTitle">Pausa</h2>
-      <div class="row">
-        <button id="pauseResume" style="background:#44d0ff;">▶ Reanudar</button>
-        <button id="pauseRestart" style="background:#eaeaea;">↻ Reiniciar</button>
-        <button id="pauseMenu" style="background:#ffd2d2;">⟵ Menú</button>
-      </div>
-
-      <div class="opt">
-        <label>Música <input id="musicToggle2" type="checkbox" checked /></label>
-        <label>Sonidos <input id="sfxToggle2" type="checkbox" checked /></label>
-        <label>Volumen <input id="volSlider2" type="range" min="0" max="100" value="70" /></label>
-      </div>
-
-      <div class="hint">Atajo: <b>Esc</b> para pausar / reanudar.</div>
+  <!-- Pausa / game over -->
+  <div id="pauseOverlay" class="hidden fixed inset-0 z-40 bg-slate-950/85 backdrop-blur-md items-center justify-center p-3">
+    <div class="modal-panel max-w-sm w-full max-h-[94dvh] overflow-y-auto overscroll-contain rounded-3xl border border-white/15 bg-slate-800 p-5 text-center shadow-2xl">
+      <div id="pauseEmoji" class="text-4xl mb-2">⏸️</div><h2 id="pauseTitle" class="text-2xl font-black">PAUSA</h2><p id="pauseDetail" class="text-sm text-slate-400 mt-1">El tiempo está detenido.</p>
+      <section id="resultPanel" class="hidden text-left mt-4 rounded-2xl bg-slate-900/80 border border-amber-400/20 p-3">
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div class="rounded-lg bg-yellow-300/10 py-2"><div class="text-[10px] text-yellow-200">PUNTOS</div><strong id="endScore" class="text-lg text-yellow-300 tabular-nums">0</strong></div>
+          <div class="rounded-lg bg-sky-300/10 py-2"><div class="text-[10px] text-sky-200">PISO</div><strong id="endFloor" class="text-lg text-sky-200">1</strong></div>
+          <div class="rounded-lg bg-green-300/10 py-2"><div class="text-[10px] text-green-200">SUPERADOS</div><strong id="endCompleted" class="text-lg text-green-200">0</strong></div>
+        </div>
+        <p id="endChallenge" class="mt-2 text-xs text-center font-semibold text-orange-200"></p>
+        <p id="rankingNotice" class="mt-2 text-xs text-center font-bold text-yellow-200"></p>
+        <h3 class="text-sm font-black mt-3 mb-2">🏆 Tus 5 mejores partidas</h3>
+        <div id="endTop5" class="space-y-1.5 text-xs"></div>
+        <button id="shareResultButton" class="mt-3 w-full rounded-xl bg-sky-500 hover:bg-sky-400 text-white py-2.5 text-sm font-black">📤 Compartir mi resultado</button>
+      </section>
+      <div class="grid gap-2 mt-5"><button id="resumeButton" class="rounded-xl bg-green-400 hover:bg-green-300 text-slate-950 py-3 font-black">▶ CONTINUAR</button><button id="restartButton" class="rounded-xl bg-slate-600 hover:bg-slate-500 py-2.5 font-bold">↻ Reiniciar partida</button><button id="menuButton" class="rounded-xl bg-rose-950/60 hover:bg-rose-900/70 border border-rose-300/20 py-2.5 font-bold">⌂ Menú principal</button></div>
+      <div class="mt-4 bg-slate-900/70 rounded-xl p-3 space-y-3 text-sm text-left"><label class="flex items-center justify-between">🎵 Música <input id="musicPause" type="checkbox" class="accent-yellow-400 w-4 h-4"></label><label class="flex items-center justify-between">🔊 Sonidos <input id="sfxPause" type="checkbox" class="accent-yellow-400 w-4 h-4"></label><label class="flex items-center justify-between gap-4">Volumen <input id="volumePause" type="range" min="0" max="100" class="w-36 accent-yellow-400"></label><button id="audioTestPause" type="button" class="rounded-xl bg-emerald-600/25 border border-emerald-400/40 px-3 py-2 text-xs font-black text-emerald-200">🔊 Probar sonido</button></div>
     </div>
   </div>
 
-  <!-- TIENDA ENTRE PISOS -->
-  <div id="overlayShop" class="overlay hidden" aria-hidden="true">
-    <div class="modal">
-      <div class="shopHeader">
-        <h2 style="margin:0;">🛒 Tienda</h2>
-        <div class="coinPill" id="shopCoinPill">🪙 Monedas: <span id="shopCoins">0</span></div>
+  <!-- Tienda -->
+  <div id="shopOverlay" class="hidden fixed inset-0 z-40 bg-slate-950/85 backdrop-blur-md items-center justify-center p-2 sm:p-4">
+    <div class="modal-panel max-w-xl w-full max-h-[94dvh] overflow-y-auto overscroll-contain rounded-3xl border border-amber-300/30 bg-slate-800 p-3 sm:p-5 shadow-2xl">
+      <div class="flex items-center justify-between gap-2"><div><p class="text-[10px] tracking-widest font-bold text-yellow-300">PISO SUPERADO</p><h2 class="text-2xl sm:text-3xl font-black">🛒 TIENDA</h2></div><div id="shopCoinsUI" class="px-3 py-2 bg-yellow-400/10 border border-yellow-300/30 rounded-xl text-yellow-200 font-black text-lg">🪙 0</div></div>
+      <p class="mt-1 text-xs text-slate-400">Construye combinaciones de reliquias y poderes para el siguiente piso.</p>
+      <div class="flex items-center justify-between text-xs font-bold mt-2 rounded-lg bg-yellow-300/10 px-3 py-2"><span id="shopPointsAward" class="text-yellow-200">⭐ Puntos por el piso: +0</span><span id="shopScoreTotal" class="text-slate-200">TOTAL: 0</span></div>
+      <div id="shopBreakNotice" class="hidden mt-2 rounded-lg border border-rose-400/40 bg-rose-950/50 px-3 py-2 text-xs font-bold text-rose-200" role="status"></div>
+      <div id="shopBombNotice" class="hidden mt-2 rounded-lg border border-rose-400/40 bg-rose-950/65 px-3 py-2 text-xs font-bold text-rose-100" role="status"><span id="shopBombText"></span><button id="shopDefuseButton" class="block mt-2 rounded-lg border border-amber-300 bg-amber-700 px-3 py-1.5 text-xs font-black disabled:opacity-40">🧯 Desactivar bomba</button></div>
+      <div class="mt-3 flex items-center justify-between gap-3 rounded-xl bg-sky-950/70 border border-sky-400/30 px-3 py-2.5">
+        <div class="min-w-0"><div class="text-sm font-black text-sky-200">📦 Ampliar guardados</div><p id="capacityDescription" class="text-[11px] text-slate-300">1 de 3 huecos desbloqueado</p></div>
+        <button id="buyCapacityButton" class="shrink-0 rounded-lg bg-sky-300 hover:bg-sky-200 text-slate-950 font-black text-xs py-2 px-3 disabled:opacity-40 disabled:bg-slate-600 disabled:text-slate-300">8 🪙 · Comprar</button>
       </div>
-      <div style="opacity:.9">
-        Piso completado. Compra algo y luego pulsa <b>Continuar</b>.
-      </div>
-
-      <div class="row" style="margin-top:10px;">
-        <button id="shopReroll" style="background:#eaeaea;">🔄 Cambiar ofertas (2🪙)</button>
-        <button id="shopContinue" style="background:#44d0ff;">➡ Continuar</button>
-      </div>
-
-      <div id="shopList" class="shopGrid"></div>
-      <div class="shopMini" id="shopSummary"></div>
+      <div id="shopCards" class="grid grid-cols-2 gap-2 mt-3"></div>
+      <div class="mt-2 flex items-center justify-between gap-2 rounded-lg border border-indigo-300/25 bg-indigo-950/40 px-2.5 py-2"><span class="text-[11px] font-semibold text-indigo-200">🃏 <span id="shopRelicCount">0/5</span> reliquias equipadas</span><button id="shopManageRelicsButton" class="rounded-lg bg-indigo-500 hover:bg-indigo-400 px-2.5 py-1.5 text-[11px] font-black">⚙️ Vender / sustituir</button></div>
+      <div class="grid grid-cols-2 gap-2 mt-3"><button id="shopRerollButton" class="rounded-xl border border-violet-400/40 bg-violet-900/60 hover:bg-violet-800/60 disabled:opacity-40 py-2.5 text-xs sm:text-sm font-black">🔄 Ofertas · 2 🪙</button><button id="nextFloorButton" class="rounded-xl bg-yellow-300 hover:bg-yellow-200 py-2.5 text-slate-950 font-black text-xs sm:text-sm">SIGUIENTE PISO →</button></div>
+      <p id="shopNote" class="text-xs text-center mt-2 text-slate-400">Puedes comprar varias ofertas antes de continuar.</p>
     </div>
   </div>
 
-  <div class="wrap">
-    <div id="instrucciones" class="card">
-      <div class="infoHeader">
-        <h1>Información</h1>
-        <button id="btnToggleInfoA" style="background:#fff; border:2px solid rgba(0,0,0,.12);">Ocultar</button>
-      </div>
-
-      <h2 style="margin:0 0 8px;">Roguelike</h2>
-      <p>El juego marca en <b style="color:#007c00">verde</b> dónde puedes colocar el número actual.</p>
-      <p><b>Guardar:</b> puedes guardar hasta <b>3 números</b> para usarlos más tarde.</p>
-      <p>🟩 <b>Verde:</b> al colocarlo, intenta <b>autollenar la casilla anterior</b> con un número menor válido.</p>
-      <p>🟨 <b>Dorado:</b> se puede colocar en <b>cualquier casilla vacía</b>.</p>
-      <p><b>Tienda:</b> al terminar un piso compras comodines y mejoras.</p>
-
-      <div id="msg"></div>
-      <div class="hint">Tip: jugar bien = colocar rápido + guardar inteligente + comprar mejoras.</div>
-    </div>
-
-    <div id="game" class="card">
-      <div class="topbar" id="topbar">
-        <div class="leftStats">
-          <div class="stat">Piso: <b id="uiFloor">1</b></div>
-          <div class="stat">Rango: <b id="uiRange">1–30</b></div>
-          <div class="stat">Tiempo: <b id="uiTime">01:30</b></div>
-
-          <div class="stat" id="coinStat" style="padding-right:18px;">
-            Monedas: <b id="uiCoins">0</b>
-            <span class="floatText" id="coinFloat">+1🪙</span>
-          </div>
-        </div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-          <button id="btnToggleInfo" class="smallBtn">Ocultar info</button>
-          <button id="btnPause" class="smallBtn">⏸ Pausa</button>
-        </div>
-      </div>
-
-      <div id="tablero"></div>
-
-      <div class="controls">
-        <div class="box">
-          <div id="currentToken" aria-live="polite">
-            <div>
-              <div style="font-size:12px; opacity:.7; font-weight:900;">Número actual</div>
-              <div id="currentValue">—</div>
-            </div>
-            <div style="text-align:right">
-              <div style="font-size:12px; opacity:.7; font-weight:900;">Tipo</div>
-              <div id="currentType">—</div>
-            </div>
-          </div>
-
-          <div class="btnRow">
-            <button id="btnStart">▶ Empezar run</button>
-            <button id="btnStore" disabled>Guardar (0/3)</button>
-          </div>
-
-          <div class="hint">
-            Consejo dopamina: compra <b>Propina</b> + <b>Tiempo</b> y verás el “snowball” 😄
-          </div>
-        </div>
-
-        <div class="box">
-          <div class="storedTitle">
-            <div style="font-weight:1000;">Guardados</div>
-            <div class="tag" id="uiStoredTag">0/3</div>
-          </div>
-          <div class="storedGrid">
-            <div class="stored" id="stored0"><div class="v">—</div><div class="t">Vacío</div></div>
-            <div class="stored" id="stored1"><div class="v">—</div><div class="t">Vacío</div></div>
-            <div class="stored" id="stored2"><div class="v">—</div><div class="t">Vacío</div></div>
-          </div>
-          <div class="hint">Click en un guardado para seleccionarlo. Click otra vez para volver al número original.</div>
-        </div>
-      </div>
+  <!-- Inventario de reliquias, sobre el juego y la tienda -->
+  <div id="relicOverlay" class="hidden fixed inset-0 z-[60] bg-slate-950/90 backdrop-blur-md items-center justify-center p-3" role="dialog" aria-modal="true" aria-labelledby="relicTitle">
+    <div class="modal-panel max-w-md w-full max-h-[90dvh] overflow-y-auto rounded-2xl border border-indigo-400/30 bg-slate-800 p-4 shadow-2xl">
+      <div class="flex justify-between items-center gap-2"><h2 id="relicTitle" class="text-xl font-black">🃏 Tus reliquias</h2><button id="closeRelicButton" class="bg-slate-600 hover:bg-slate-500 rounded-lg px-3 py-2 font-bold text-sm">✕ Cerrar</button></div>
+      <p class="mt-2 text-xs text-slate-300">Cada reliquia tiene riesgo de romperse <b>al superar cada piso</b>. Puedes venderla para liberar uno de tus cinco huecos. Los efectos desaparecen al romperse o venderla.</p>
+      <div id="relicList" class="mt-3 space-y-2"></div>
+      <p id="relicFooter" class="mt-3 text-[11px] text-indigo-200"></p>
     </div>
   </div>
 
   <script>
-    // =========================
-    // Helpers “juice”
-    // =========================
-    function restartClass(el, cls) {
-      if (!el) return;
-      el.classList.remove(cls);
-      void el.offsetWidth; // force reflow
-      el.classList.add(cls);
-    }
-    function addTempClass(el, cls, ms=300) {
-      if (!el) return;
-      restartClass(el, cls);
-      setTimeout(() => el.classList.remove(cls), ms);
-    }
-    function toast(text) {
-      const t = document.getElementById("toast");
-      t.textContent = text;
-      restartClass(t, "show");
-    }
-    function shakeGame() {
-      addTempClass(document.getElementById("game"), "shakeScreen", 380);
-    }
-
-    // =========================
-    // Confetti / particles (canvas)
-    // =========================
-    const fx = {
-      canvas: document.getElementById("fxCanvas"),
-      ctx: null,
-      w: 0,
-      h: 0,
-      parts: [],
-      raf: null,
+    'use strict';
+    // ================================================
+    // Configuración: cambia aquí probabilidades y poderes
+    // ================================================
+    const TYPES = {
+      normal:  {icon:'🔢', name:'Normal', color:'text-slate-100', weight:43},
+      green:   {icon:'🟩', name:'Semilla', color:'text-green-300', weight:18},
+      blue:    {icon:'🟦', name:'Espejo', color:'text-sky-300', weight:12},
+      purple:  {icon:'🟪', name:'Reloj +12s', color:'text-violet-300', weight:9},
+      pink:    {icon:'💗', name:'Corazón +3🪙', color:'text-pink-300', weight:8},
+      gold:    {icon:'🟨', name:'Comodín', color:'text-yellow-300', weight:7},
+      rainbow: {icon:'🌈', name:'Doble comodín', color:'text-orange-300', weight:3},
+      bomb:    {icon:'💣', name:'Bomba', color:'text-rose-300', weight:5},
+      curse:   {icon:'☠️', name:'Maldito −10s', color:'text-red-300', weight:7},
+      ice:     {icon:'🧊', name:'Hielo: bloquea guardados', color:'text-cyan-300', weight:6},
+      miracle: {icon:'🌟', name:'MILAGRO LEGENDARIO', color:'text-fuchsia-300', weight:0}
     };
-
-    function resizeFx() {
-      fx.w = fx.canvas.width = window.innerWidth * devicePixelRatio;
-      fx.h = fx.canvas.height = window.innerHeight * devicePixelRatio;
-      fx.canvas.style.width = window.innerWidth + "px";
-      fx.canvas.style.height = window.innerHeight + "px";
-      fx.ctx = fx.canvas.getContext("2d");
-    }
-    window.addEventListener("resize", resizeFx);
-    resizeFx();
-
-    function spawnBurst(x, y, count, power=1) {
-      // x,y in CSS pixels
-      const px = x * devicePixelRatio;
-      const py = y * devicePixelRatio;
-
-      for (let i=0;i<count;i++) {
-        const a = Math.random() * Math.PI * 2;
-        const sp = (4 + Math.random()*8) * power;
-        fx.parts.push({
-          x: px,
-          y: py,
-          vx: Math.cos(a) * sp,
-          vy: Math.sin(a) * sp - 6 * power,
-          g: 0.35 * devicePixelRatio,
-          life: 55 + Math.random()*35,
-          r: 2 + Math.random()*3,
-          rot: Math.random()*Math.PI,
-          vr: (Math.random()-0.5)*0.25,
-          // random bright-ish color
-          c: `hsl(${Math.floor(Math.random()*360)}, 90%, 60%)`,
-        });
-      }
-      startFxLoop();
-    }
-
-    function startFxLoop(){
-      if (fx.raf) return;
-      const loop = () => {
-        fx.raf = requestAnimationFrame(loop);
-        const ctx = fx.ctx;
-        if (!ctx) return;
-        ctx.clearRect(0,0,fx.w,fx.h);
-
-        for (let i=fx.parts.length-1;i>=0;i--){
-          const p = fx.parts[i];
-          p.vy += p.g;
-          p.x += p.vx * devicePixelRatio * 0.25;
-          p.y += p.vy * devicePixelRatio * 0.25;
-          p.rot += p.vr;
-          p.life -= 1;
-
-          ctx.save();
-          ctx.translate(p.x, p.y);
-          ctx.rotate(p.rot);
-          ctx.fillStyle = p.c;
-          ctx.globalAlpha = Math.max(0, Math.min(1, p.life / 80));
-          ctx.fillRect(-p.r*devicePixelRatio, -p.r*devicePixelRatio, (p.r*2.4)*devicePixelRatio, (p.r*1.1)*devicePixelRatio);
-          ctx.restore();
-
-          if (p.life <= 0 || p.y > fx.h + 200) fx.parts.splice(i,1);
-        }
-
-        if (fx.parts.length === 0){
-          cancelAnimationFrame(fx.raf);
-          fx.raf = null;
-          ctx.clearRect(0,0,fx.w,fx.h);
-        }
-      };
-      loop();
-    }
-
-    // Convenient: burst from element center
-    function burstFromEl(el, count=22, power=1) {
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      spawnBurst(r.left + r.width/2, r.top + r.height/2, count, power);
-    }
-
-    // =========================
-    // AUDIO (Web Audio sin archivos)
-    // =========================
-    const audio = {
-      ctx: null,
-      master: null,
-      musicGain: null,
-      sfxGain: null,
-      vol: 0.70,
-      musicOn: true,
-      sfxOn: true,
-      musicSchedulerId: null,
-      isMusicPlaying: false,
-      nextNoteTime: 0,
-      step: 0,
-      bpm: 112,
-      lookaheadMs: 25,
-      scheduleAheadSec: 0.20,
-    };
-
-    function ensureAudio() {
-      if (audio.ctx) return;
-      const AC = window.AudioContext || window.webkitAudioContext;
-      audio.ctx = new AC();
-
-      audio.master = audio.ctx.createGain();
-      audio.master.gain.value = audio.vol;
-      audio.master.connect(audio.ctx.destination);
-
-      audio.musicGain = audio.ctx.createGain();
-      audio.musicGain.gain.value = audio.musicOn ? 0.22 : 0.0;
-      audio.musicGain.connect(audio.master);
-
-      audio.sfxGain = audio.ctx.createGain();
-      audio.sfxGain.gain.value = audio.sfxOn ? 0.85 : 0.0;
-      audio.sfxGain.connect(audio.master);
-    }
-
-    async function resumeAudioContext() {
-      ensureAudio();
-      if (audio.ctx.state === "suspended") {
-        try { await audio.ctx.resume(); } catch {}
-      }
-    }
-
-    function setVolume01(v01) {
-      audio.vol = Math.max(0, Math.min(1, v01));
-      if (audio.master) audio.master.gain.value = audio.vol;
-    }
-    function setMusicOn(on) {
-      audio.musicOn = !!on;
-      if (audio.musicGain) audio.musicGain.gain.value = audio.musicOn ? 0.22 : 0.0;
-      if (!audio.musicOn) stopMusic();
-      else if (state.running && !state.paused) startMusic();
-    }
-    function setSfxOn(on) {
-      audio.sfxOn = !!on;
-      if (audio.sfxGain) audio.sfxGain.gain.value = audio.sfxOn ? 0.85 : 0.0;
-    }
-
-    function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
-
-    function beep({freq=440, dur=0.08, type="sine", gain=0.18, slideTo=null} = {}) {
-      ensureAudio();
-      if (!audio.sfxOn) return;
-      const t0 = audio.ctx.currentTime;
-
-      const o = audio.ctx.createOscillator();
-      o.type = type;
-      o.frequency.setValueAtTime(freq, t0);
-      if (slideTo != null) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
-
-      const g = audio.ctx.createGain();
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(gain, t0 + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-
-      o.connect(g);
-      g.connect(audio.sfxGain);
-
-      o.start(t0);
-      o.stop(t0 + dur + 0.02);
-    }
-
-    function sfxPlaceNormal(){ beep({freq: 520, dur: 0.06, type:"square", gain:0.12, slideTo: 420}); }
-    function sfxPlaceGreen(){ beep({freq: 700, dur: 0.07, type:"triangle", gain:0.14, slideTo: 520}); }
-    function sfxPlaceGold(){ beep({freq: 820, dur: 0.08, type:"triangle", gain:0.14, slideTo: 620}); }
-    function sfxStore(){ beep({freq: 360, dur: 0.07, type:"sine", gain:0.12, slideTo: 520}); }
-    function sfxSelectStored(){ beep({freq: 480, dur: 0.05, type:"sine", gain:0.10}); }
-    function sfxPause(){ beep({freq: 260, dur: 0.10, type:"square", gain:0.10, slideTo: 180}); }
-    function sfxResume(){ beep({freq: 220, dur: 0.10, type:"square", gain:0.10, slideTo: 320}); }
-    function sfxWin(){
-      beep({freq: 523, dur: 0.08, type:"triangle", gain:0.12});
-      setTimeout(()=>beep({freq: 659, dur: 0.08, type:"triangle", gain:0.12}), 90);
-      setTimeout(()=>beep({freq: 784, dur: 0.10, type:"triangle", gain:0.12}), 180);
-    }
-    function sfxLose(){
-      beep({freq: 300, dur: 0.10, type:"sawtooth", gain:0.10, slideTo: 160});
-      setTimeout(()=>beep({freq: 220, dur: 0.12, type:"sawtooth", gain:0.08, slideTo: 120}), 80);
-    }
-    function sfxBuy(){ beep({freq: 640, dur: 0.07, type:"triangle", gain:0.12, slideTo: 860}); }
-    function sfxNoMoney(){ beep({freq: 160, dur: 0.12, type:"square", gain:0.10, slideTo: 120}); }
-    function sfxOpenShop(){ beep({freq: 420, dur: 0.08, type:"triangle", gain:0.10, slideTo: 560}); }
-
-    const musicPattern = [72,null,74,null,76,null,79,null,76,null,74,null,72,null,67,null];
-    const bassPattern  = [48,null,48,null,50,null,50,null,45,null,45,null,43,null,43,null];
-
-    function scheduleMusicNote(midi, time, dur, isBass=false) {
-      if (!audio.musicOn) return;
-      if (midi == null) return;
-
-      const o = audio.ctx.createOscillator();
-      o.type = isBass ? "square" : "triangle";
-      o.frequency.setValueAtTime(midiToFreq(midi), time);
-
-      const g = audio.ctx.createGain();
-      const peak = isBass ? 0.055 : 0.045;
-      g.gain.setValueAtTime(0.0001, time);
-      g.gain.exponentialRampToValueAtTime(peak, time + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
-
-      o.connect(g);
-      g.connect(audio.musicGain);
-
-      o.start(time);
-      o.stop(time + dur + 0.03);
-    }
-
-    function musicSchedulerTick() {
-      if (!audio.isMusicPlaying) return;
-      const now = audio.ctx.currentTime;
-
-      const secPerBeat = 60 / audio.bpm;
-      const stepDur = secPerBeat / 4;
-
-      while (audio.nextNoteTime < now + audio.scheduleAheadSec) {
-        const i = audio.step % musicPattern.length;
-        scheduleMusicNote(musicPattern[i], audio.nextNoteTime, stepDur * 0.95, false);
-        scheduleMusicNote(bassPattern[i],  audio.nextNoteTime, stepDur * 0.95, true);
-        audio.nextNoteTime += stepDur;
-        audio.step++;
-      }
-    }
-
-    function startMusic() {
-      ensureAudio();
-      if (!audio.musicOn) return;
-      if (audio.isMusicPlaying) return;
-      audio.isMusicPlaying = true;
-      audio.step = 0;
-      audio.nextNoteTime = audio.ctx.currentTime + 0.05;
-      audio.musicSchedulerId = setInterval(musicSchedulerTick, audio.lookaheadMs);
-    }
-    function stopMusic() {
-      audio.isMusicPlaying = false;
-      if (audio.musicSchedulerId) clearInterval(audio.musicSchedulerId);
-      audio.musicSchedulerId = null;
-    }
-
-    // =========================
-    // JUEGO + TIENDA
-    // =========================
-    const TokenType = { Normal: "Normal", Verde: "Verde", Dorado: "Dorado" };
-
+    const FLOOR = [
+      {n:5,max:50,sec:100,rerolls:2}, {n:6,max:80,sec:95,rerolls:2},
+      {n:7,max:120,sec:90,rerolls:1}, {n:8,max:170,sec:85,rerolls:1},
+      {n:9,max:230,sec:77,rerolls:1}, {n:10,max:300,sec:66,rerolls:0}
+    ];
+    // Desafío más intenso, con límite de dificultad a partir del piso 6.
+    const floorPressure = floor => ({
+      saveCost:floor>=10?7:floor>=7?5:floor>=5?3:0,
+      rerollCost:floor>=10?4:floor>=7?3:floor>=5?2:0,
+      specialFactor:floor>=10?.3:floor>=6?.42:floor>=4?.72:1,
+      hazardFactor:floor<3?0:floor<=4?.58:floor<=6?1:floor<=9?1.35:1.6
+    });
+    const CAPACITY_PRICES={1:8,2:14};
+    const BOMB_FUSE = floor => floor>=10?8:floor>=7?10:13;
+    function breakPct(item){return item.breakChance??0;}
+    function currentRerolls(){return state.baseRerolls+state.bonusRerolls;}
+    // Todas las reliquias tienen probabilidad de rotura, mostrada en la tienda.
+    // Se comprueba al superar cada piso. El salvavidas tiene una tirada adicional al activarse.
+    const GOODS = [
+      {id:'gold',icon:'🟨',title:'Comodín dorado',desc:'Un comodín que cabe en cualquier hueco.',price:4,rarity:'Común',kind:'token',token:'gold',weight:8},
+      {id:'blue',icon:'🟦',title:'Número espejo',desc:'Genera un número mayor a su derecha.',price:4,rarity:'Común',kind:'token',token:'blue',weight:7},
+      {id:'pink',icon:'💗',title:'Número corazón',desc:'+3 monedas y otro especial asegurado.',price:4,rarity:'Común',kind:'token',token:'pink',weight:7},
+      {id:'rainbow',icon:'🌈',title:'Número arcoíris',desc:'Ocupa 2 casillas consecutivas vacías.',price:9,rarity:'Épico',kind:'token',token:'rainbow',weight:3},
+      {id:'rerolls',icon:'🎲',title:'Dados cargados',desc:'+2 cambios de número para usar cuando quieras.',price:4,rarity:'Común',kind:'consumable',action:'rerolls',weight:9},
+      {id:'eraser',icon:'🧽',title:'Goma mágica',desc:'Borra 1 número colocado y libera su casilla.',price:5,rarity:'Raro',kind:'consumable',action:'eraser',weight:6},
+      {id:'defuser',icon:'🧯',title:'Kit antibombas',desc:'Desactiva 1 bomba, esté activa o guardada. Sin recompensa por desactivarla.',price:8,rarity:'Raro',kind:'consumable',action:'defuser',weight:6},
+      {id:'miracle',icon:'🌟',title:'Milagro legendario',desc:'Un bloque que completa todo el tablero. Extremadamente raro.',price:22,rarity:'Legendario',kind:'token',token:'miracle',weight:.16},
+      {id:'pig',icon:'🐷',title:'Hucha infinita',desc:'+1 moneda extra por cada casilla completada.',price:7,rarity:'Raro',kind:'joker',weight:6,breakChance:16},
+      {id:'clock',icon:'⏳',title:'Reloj de arena',desc:'+12 segundos al inicio de cada piso.',price:6,rarity:'Común',kind:'joker',weight:7,breakChance:20},
+      {id:'clover',icon:'🍀',title:'Trébol travieso',desc:'Aumenta la aparición de números especiales.',price:6,rarity:'Raro',kind:'joker',weight:7,breakChance:18},
+      {id:'magnet',icon:'🧲',title:'Imán de la suerte',desc:'+2 monedas cuando un efecto rellena otra casilla.',price:7,rarity:'Raro',kind:'joker',weight:5,breakChance:18},
+      {id:'lifebuoy',icon:'🛟',title:'Última oportunidad',desc:'Rescata un bloqueo total: 90% de romperse al activarse y, si sobrevive, 2 pisos de enfriamiento.',price:9,rarity:'Épico',kind:'joker',weight:3,breakChance:25},
+      {id:'prism',icon:'🔮',title:'Prisma loco',desc:'Multiplica la posibilidad de que salga arcoíris.',price:9,rarity:'Épico',kind:'joker',weight:4,breakChance:23},
+      {id:'interest',icon:'🏦',title:'Intereses',desc:'+3 monedas al acabar piso si tienes 8 o más.',price:6,rarity:'Raro',kind:'joker',weight:5,breakChance:14}
+    ];
+    const $ = id => document.getElementById(id);
+    const rand = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+    const pos = i => String(i+1).padStart(2,'0');
+    const prefersReduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const state = {
-      floor: 1,
-      size: 5,
-      min: 1,
-      max: 30,
-      timeLeft: 90,
-      timerId: null,
-
-      slots: [],
-      current: null,
-      stored: [],
-      selectedStoredIndex: -1,
-      baseCurrent: null,
-
-      running: false,
-      paused: false,
-      shopOpen: false,
-
-      infoHidden: false,
-
-      coins: 0,
-      rerollsLeft: 0,
-
-      mod: {
-        timeBonusPerFloor: 0,
-        coinBonusPerPlace: 0,
-        extraRerollsPerFloor: 0,
-        greenChanceBonus: 0,
-        goldChanceBonus: 0,
-      },
-
-      shopOffers: [],
+      phase:'menu', floor:1, size:5, max:50, timeLeft:105, lastTime:0, timer:null,
+      board:[], current:null, stored:[], capacity:1, selected:-1, eraseMode:false, baseRerolls:2, bonusRerolls:0, erasers:0, defusers:0, iceLockTurns:0, bombsDrawnThisFloor:0,
+      coins:0, jokers:[], offers:[], shopRerolls:0, guaranteeSpecial:false, rescueUsed:false, rescueReadyFloor:1,
+      info:false, managerOpen:false, managerFrom:null, lastBreaks:[], brokenCount:0,
+      streak:0, maxStreak:0, announcedRecord:false, milestones:new Set(),
+      score:0, completedFloors:0, scoredSlots:new Set(), resultSaved:false, lastResult:null, lastFloorAward:0
     };
-
-    const floorConfigs = [
-      { size: 5,  min: 1, max: 30,  time: 90, baseRerolls: 1 },
-      { size: 6,  min: 1, max: 50,  time: 80, baseRerolls: 1 },
-      { size: 7,  min: 1, max: 80,  time: 75, baseRerolls: 1 },
-      { size: 8,  min: 1, max: 120, time: 70, baseRerolls: 1 },
-      { size: 9,  min: 1, max: 180, time: 65, baseRerolls: 1 },
-      { size: 10, min: 1, max: 250, time: 60, baseRerolls: 1 },
-    ];
-
-    const shopPool = [
-      {
-        id: "gold_token",
-        name: "🟨 Comodín Dorado",
-        desc: "Añade un Dorado a tus guardados. Se coloca en cualquier casilla vacía.",
-        price: 6,
-        rarityWeight: 2,
-        kind: "token",
-        token: { value: 0, type: TokenType.Dorado },
-      },
-      {
-        id: "green_charm",
-        name: "🟩 Amuleto Verde",
-        desc: "+8% probabilidad de Verdes durante la run.",
-        price: 5,
-        rarityWeight: 3,
-        kind: "mod",
-        apply() { state.mod.greenChanceBonus += 8; },
-      },
-      {
-        id: "gold_stamp",
-        name: "🟨 Sello Dorado",
-        desc: "+4% probabilidad de Dorados durante la run.",
-        price: 4,
-        rarityWeight: 4,
-        kind: "mod",
-        apply() { state.mod.goldChanceBonus += 4; },
-      },
-      {
-        id: "time_voucher",
-        name: "⏱ Vale de Tiempo",
-        desc: "+10s al tiempo base de cada piso (toda la run).",
-        price: 5,
-        rarityWeight: 3,
-        kind: "mod",
-        apply() { state.mod.timeBonusPerFloor += 10; },
-      },
-      {
-        id: "coin_joker",
-        name: "🃏 Joker: Propina",
-        desc: "+1 moneda extra cada vez que colocas un número (toda la run).",
-        price: 7,
-        rarityWeight: 2,
-        kind: "mod",
-        apply() { state.mod.coinBonusPerPlace += 1; },
-      },
-      {
-        id: "reroll_pass",
-        name: "🔄 Pase de Reroll",
-        desc: "+1 reroll automático por piso (si un número no tiene hueco).",
-        price: 6,
-        rarityWeight: 3,
-        kind: "mod",
-        apply() { state.mod.extraRerollsPerFloor += 1; },
-      },
-      {
-        id: "cheap_gold",
-        name: "🟨 Dorado Barato",
-        desc: "Dorado con valor más bajo (≈50% del rango), pero se coloca en cualquier casilla vacía.",
-        price: 4,
-        rarityWeight: 5,
-        kind: "token",
-        token: { value: 0, type: TokenType.Dorado, cheap: true },
-      },
-    ];
-
-    function weightedPick(pool, takenIds) {
-      const candidates = pool.filter(it => !takenIds.has(it.id));
-      const total = candidates.reduce((acc, it) => acc + (it.rarityWeight || 1), 0);
-      let r = Math.random() * total;
-      for (const it of candidates) {
-        r -= (it.rarityWeight || 1);
-        if (r <= 0) return it;
-      }
-      return candidates[candidates.length - 1];
-    }
-    function generateShopOffers() {
-      const offers = [];
-      const taken = new Set();
-      const count = 4;
-      for (let i = 0; i < count; i++) {
-        const pick = weightedPick(shopPool, taken);
-        taken.add(pick.id);
-        offers.push({ ...pick, sold: false });
-      }
-      state.shopOffers = offers;
-    }
-
-    // =========================
-    // DOM refs
-    // =========================
-    const tableroEl = document.getElementById("tablero");
-    const msgEl = document.getElementById("msg");
-    const infoEl = document.getElementById("instrucciones");
-
-    const uiFloor = document.getElementById("uiFloor");
-    const uiRange = document.getElementById("uiRange");
-    const uiTime  = document.getElementById("uiTime");
-    const uiCoins = document.getElementById("uiCoins");
-
-    const coinFloat = document.getElementById("coinFloat");
-    const coinStat = document.getElementById("coinStat");
-
-    const currentValueEl = document.getElementById("currentValue");
-    const currentTypeEl  = document.getElementById("currentType");
-
-    const btnStart = document.getElementById("btnStart");
-    const btnStore = document.getElementById("btnStore");
-    const btnPause = document.getElementById("btnPause");
-
-    const btnToggleInfo = document.getElementById("btnToggleInfo");
-    const btnToggleInfoA = document.getElementById("btnToggleInfoA");
-
-    const storedEls = [
-      document.getElementById("stored0"),
-      document.getElementById("stored1"),
-      document.getElementById("stored2"),
-    ];
-    const uiStoredTag = document.getElementById("uiStoredTag");
-
-    // overlays
-    const overlayMenu = document.getElementById("overlayMenu");
-    const overlayPause = document.getElementById("overlayPause");
-    const pauseTitle = document.getElementById("pauseTitle");
-    const pauseResume = document.getElementById("pauseResume");
-    const pauseRestart = document.getElementById("pauseRestart");
-    const pauseMenu = document.getElementById("pauseMenu");
-
-    const overlayShop = document.getElementById("overlayShop");
-    const shopCoinsEl = document.getElementById("shopCoins");
-    const shopListEl = document.getElementById("shopList");
-    const shopSummaryEl = document.getElementById("shopSummary");
-    const shopRerollBtn = document.getElementById("shopReroll");
-    const shopContinueBtn = document.getElementById("shopContinue");
-    const shopCoinPill = document.getElementById("shopCoinPill");
-
-    // menu options
-    const musicToggle = document.getElementById("musicToggle");
-    const sfxToggle = document.getElementById("sfxToggle");
-    const volSlider = document.getElementById("volSlider");
-
-    const musicToggle2 = document.getElementById("musicToggle2");
-    const sfxToggle2 = document.getElementById("sfxToggle2");
-    const volSlider2 = document.getElementById("volSlider2");
-
-    const menuPlay = document.getElementById("menuPlay");
-    const menuToggleInfo = document.getElementById("menuToggleInfo");
-
-    // =========================
-    // Util
-    // =========================
-    function randInt(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
-    function formatTime(sec){
-      const m=Math.floor(sec/60), s=sec%60;
-      return String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
-    }
-    function setMsg(text, color){
-      msgEl.textContent = text || "";
-      msgEl.style.color = color || "#111";
-    }
-    function tokenEmoji(type){
-      if (type === TokenType.Verde) return "🟩";
-      if (type === TokenType.Dorado) return "🟨";
-      return "⬜";
-    }
-    function tokenColor(type){
-      if (type === TokenType.Verde) return "rgb(0, 196, 0)";
-      if (type === TokenType.Dorado) return "rgb(255, 230, 0)";
-      return "#fff";
-    }
-    function inputBlocked(){
-      return !state.running || state.paused || state.shopOpen;
-    }
-
-    // =========================
-    // Info toggle
-    // =========================
-    function applyInfoVisibility(){
-      if (state.infoHidden){
-        infoEl.classList.add("hidden");
-        btnToggleInfo.textContent = "Mostrar info";
-        btnToggleInfoA.textContent = "Mostrar";
-      } else {
-        infoEl.classList.remove("hidden");
-        btnToggleInfo.textContent = "Ocultar info";
-        btnToggleInfoA.textContent = "Ocultar";
-      }
-    }
-    function toggleInfo(){ state.infoHidden=!state.infoHidden; applyInfoVisibility(); }
-
-    // =========================
-    // Board UI
-    // =========================
-    function buildBoard(){
-      tableroEl.innerHTML="";
-      for(let i=0;i<10;i++){
-        const div=document.createElement("div");
-        div.className="slot";
-        div.dataset.idx=String(i);
-        const n=document.createElement("div");
-        n.className="num";
-        n.textContent=String(i+1);
-        div.appendChild(n);
-        div.addEventListener("click", ()=>onSlotClick(i));
-        tableroEl.appendChild(div);
-      }
-    }
-
-    function paintBoard(){
-      const slotDivs=[...document.querySelectorAll(".slot")];
-      slotDivs.forEach((el,i)=>{ el.style.display = (i<state.size) ? "flex" : "none"; });
-
-      for(let i=0;i<state.size;i++){
-        const el=slotDivs[i];
-        const numEl=el.querySelector(".num");
-        const v=state.slots[i];
-
-        el.classList.remove("valid");
-        if (v==null){
-          numEl.textContent=String(i+1);
-          numEl.style.color="var(--slotText)";
-          el.style.backgroundColor="var(--slot)";
-        } else {
-          numEl.textContent=String(v);
-          numEl.style.color="rgb(0,0,0)";
-          el.style.backgroundColor="var(--placed)";
-        }
-      }
-    }
-
-    function clearHighlights(){
-      const slotDivs=[...document.querySelectorAll(".slot")];
-      for(let i=0;i<state.size;i++){
-        slotDivs[i].classList.remove("valid");
-        if(state.slots[i]==null) slotDivs[i].style.backgroundColor="var(--slot)";
-      }
-    }
-
-    function highlightValid(indices){
-      const slotDivs=[...document.querySelectorAll(".slot")];
-      for(let i=0;i<state.size;i++) slotDivs[i].classList.remove("valid");
-      indices.forEach(i=>{
-        if(i>=0 && i<state.size && state.slots[i]==null){
-          slotDivs[i].classList.add("valid");
-        }
-      });
-    }
-
-    function getSlotEl(idx){
-      return document.querySelector(`.slot[data-idx="${idx}"]`);
-    }
-
-    // =========================
-    // Rules
-    // =========================
-    function getValidIndices(value){
-      let guardado = state.size - 1;
-      for(let i=0;i<state.size;i++){
-        const v=state.slots[i];
-        if(v!=null && v>value){ guardado=i; break; }
-      }
-      const valid=[];
-      for(let j=guardado;j>=0;j--){
-        const v=state.slots[j];
-        if(v!=null && v<value) break;
-        if(v==null) valid.push(j);
-      }
-      return valid;
-    }
-
-    function canPlace(idx, value){
-      if(idx<0 || idx>=state.size) return false;
-      if(state.slots[idx]!=null) return false;
-      return getValidIndices(value).includes(idx);
-    }
-
-    function tryAutoFillSmaller(targetIdx, upperExclusive){
-      if(targetIdx<0 || targetIdx>=state.size) return false;
-      if(state.slots[targetIdx]!=null) return false;
-
-      let min = state.min;
-      for(let i=targetIdx-1;i>=0;i--){
-        if(state.slots[i]!=null){ min=Math.max(min, state.slots[i]+1); break; }
-      }
-      const max = Math.min(state.max, upperExclusive-1);
-      if(min>max) return false;
-
-      for(let t=0;t<20;t++){
-        const cand=randInt(min,max);
-        if(canPlace(targetIdx,cand)){ state.slots[targetIdx]=cand; return true; }
-      }
-      if(canPlace(targetIdx,min)){ state.slots[targetIdx]=min; return true; }
-      if(canPlace(targetIdx,max)){ state.slots[targetIdx]=max; return true; }
-      return false;
-    }
-
-    // =========================
-    // Currency / HUD + dopamine
-    // =========================
-    function coinFx(amount){
-      // float + bounce
-      coinFloat.textContent = `+${amount}🪙`;
-      restartClass(coinFloat, "show");
-      addTempClass(coinStat, "coinBounce", 260);
-      // burst from coin stat
-      burstFromEl(coinStat, 10, 0.8);
-    }
-
-    function addCoins(amount){
-      state.coins = Math.max(0, state.coins + amount);
-      uiCoins.textContent = String(state.coins);
-      coinFx(amount);
-    }
-
-    // =========================
-    // Tokens
-    // =========================
-    function paintCurrentToken(){
-      if(!state.current){
-        currentValueEl.textContent="—";
-        currentTypeEl.textContent="—";
-        document.getElementById("currentToken").style.background="#fff";
-        return;
-      }
-      currentValueEl.textContent=String(state.current.value);
-      currentTypeEl.textContent=`${tokenEmoji(state.current.type)} ${state.current.type}`;
-      document.getElementById("currentToken").style.background = tokenColor(state.current.type);
-      addTempClass(document.getElementById("currentToken"), "pop", 220);
-    }
-
-    function rollToken(){
-      const greenChance = Math.min(60, 12 + state.mod.greenChanceBonus);
-      const goldChance  = Math.min(25,  2 + state.mod.goldChanceBonus);
-      const r = Math.random() * 100;
-
-      let type = TokenType.Normal;
-      if (r < goldChance) type = TokenType.Dorado;
-      else if (r < goldChance + greenChance) type = TokenType.Verde;
-
-      const value = randInt(state.min, state.max);
-      state.current = { value, type };
-
-      state.selectedStoredIndex = -1;
-      state.baseCurrent = null;
-
-      paintCurrentToken();
-      updateStoreUI();
-      afterTokenChanged();
-    }
-
-    function afterTokenChanged(){
-      if(!state.running || state.paused || state.shopOpen) return;
-
-      if (state.current.type === TokenType.Dorado) {
-        const all = [];
-        for (let i=0;i<state.size;i++) if (state.slots[i]==null) all.push(i);
-        highlightValid(all);
-        setMsg("");
-        return;
-      }
-
-      const valid=getValidIndices(state.current.value);
-      highlightValid(valid);
-
-      const canStore = state.stored.length < 3;
-      const anyStoredFits = state.stored.some(tok => {
-        if (tok.type === TokenType.Dorado) return state.slots.some(v => v==null);
-        return getValidIndices(tok.value).length > 0;
-      });
-
-      if(valid.length===0){
-        if (state.rerollsLeft > 0) {
-          state.rerollsLeft--;
-          toast(`🔄 Reroll automático (${state.rerollsLeft} restantes)`);
-          shakeGame();
-          rollToken();
-          return;
-        }
-
-        if(!canStore && !anyStoredFits){
-          gameOver(`Te quedaste sin huecos para ${state.current.value} y ningún guardado encaja.`);
-          return;
-        } else {
-          setMsg(`No hay hueco para ${state.current.value}. Guarda o usa un guardado que encaje.`, "#8a4b00");
-        }
-      } else {
-        setMsg("");
-      }
-    }
-
-    // =========================
-    // Stored
-    // =========================
-    function updateStoreUI(){
-      btnStore.textContent=`Guardar (${state.stored.length}/3)`;
-      btnStore.disabled = inputBlocked() || !state.current || state.stored.length>=3;
-      uiStoredTag.textContent = `${state.stored.length}/3`;
-
-      for(let i=0;i<3;i++){
-        const el=storedEls[i];
-        el.classList.remove("selected");
-
-        const vEl=el.querySelector(".v");
-        const tEl=el.querySelector(".t");
-
-        if(state.stored[i]){
-          vEl.textContent=String(state.stored[i].value);
-          tEl.textContent=`${tokenEmoji(state.stored[i].type)} ${state.stored[i].type}`;
-          el.style.background=tokenColor(state.stored[i].type);
-          el.style.opacity="1";
-        } else {
-          vEl.textContent="—";
-          tEl.textContent="Vacío";
-          el.style.background="#fff";
-          el.style.opacity="0.9";
-        }
-
-        if(state.selectedStoredIndex===i) el.classList.add("selected");
-      }
-    }
-
-    function storeCurrent(){
-      if(inputBlocked() || !state.current) return;
-      if(state.stored.length>=3) return;
-
-      state.stored.push({ ...state.current });
-      state.selectedStoredIndex=-1;
-      state.baseCurrent=null;
-
-      updateStoreUI();
-      sfxStore();
-      burstFromEl(btnStore, 16, 0.9);
-      addTempClass(btnStore, "pop", 220);
-      toast("📦 Guardado");
-      rollToken();
-    }
-
-    function selectStored(i){
-      if(inputBlocked()) return;
-      if(!state.stored[i]) return;
-
-      if (state.selectedStoredIndex === i) {
-        state.selectedStoredIndex = -1;
-        if (state.baseCurrent) state.current = { ...state.baseCurrent };
-        state.baseCurrent = null;
-      } else {
-        if (state.selectedStoredIndex === -1) state.baseCurrent = state.current ? { ...state.current } : null;
-        state.selectedStoredIndex = i;
-        state.current = { ...state.stored[i] };
-      }
-
-      sfxSelectStored();
-      addTempClass(storedEls[i], "pop", 220);
-      paintCurrentToken();
-      updateStoreUI();
-      afterTokenChanged();
-    }
-
-    function consumeSelectedStoredIfAny(){
-      if(state.selectedStoredIndex===-1) return;
-      state.stored.splice(state.selectedStoredIndex, 1);
-      state.selectedStoredIndex=-1;
-      state.baseCurrent = null;
-      updateStoreUI();
-    }
-
-    // =========================
-    // Click slot (placement effects)
-    // =========================
-    function onSlotClick(idx){
-      if(inputBlocked() || !state.current) return;
-
-      const value=state.current.value;
-      const type=state.current.type;
-
-      if (type === TokenType.Dorado) {
-        if (state.slots[idx] != null) return;
-      } else {
-        const valid=getValidIndices(value);
-        if(!valid.includes(idx)) return;
-      }
-
-      state.slots[idx]=value;
-      consumeSelectedStoredIfAny();
-
-      const slotEl = getSlotEl(idx);
-      addTempClass(slotEl, "pop", 220);
-
-      // coins for placement
-      addCoins(1 + state.mod.coinBonusPerPlace);
-
-      if(type===TokenType.Verde){
-        sfxPlaceGreen();
-        addTempClass(slotEl, "flash-green", 360);
-        burstFromEl(slotEl, 18, 1);
-        const target=idx-1;
-        const ok=tryAutoFillSmaller(target, value);
-        if(ok){
-          addCoins(1 + state.mod.coinBonusPerPlace);
-          const targetEl = getSlotEl(target);
-          addTempClass(targetEl, "pop", 220);
-          addTempClass(targetEl, "flash-green", 360);
-          burstFromEl(targetEl, 14, 0.9);
-          toast("🟩 Combo!");
-          setMsg(`🟩 Colocaste ${value} y autollenaste la casilla ${target+1}.`, "#0b6d00");
-        } else {
-          setMsg(`🟩 Colocaste ${value}, pero no se pudo autollenar la casilla anterior.`, "#255f2a");
-        }
-      } else if (type===TokenType.Dorado){
-        sfxPlaceGold();
-        addTempClass(slotEl, "flash-gold", 360);
-        burstFromEl(slotEl, 22, 1.1);
-        toast("🟨 Wild!");
-        setMsg(`🟨 Dorado colocado en casilla ${idx+1}.`, "#6a5b00");
-      } else {
-        sfxPlaceNormal();
-        burstFromEl(slotEl, 10, 0.7);
-        setMsg("");
-      }
-
-      paintBoard();
-
-      if(state.slots.every(v=>v!=null)){
-        floorClear();
-        return;
-      }
-
-      rollToken();
-    }
-
-    // =========================
-    // Floors / Timer
-    // =========================
-    function applyFloorConfig(){
-      const cfg=floorConfigs[Math.min(state.floor-1, floorConfigs.length-1)];
-      state.size=cfg.size;
-      state.min=cfg.min;
-      state.max=cfg.max;
-      state.timeLeft=cfg.time + state.mod.timeBonusPerFloor;
-      state.rerollsLeft = cfg.baseRerolls + state.mod.extraRerollsPerFloor;
-
-      uiFloor.textContent=String(state.floor);
-      uiRange.textContent=`${state.min}–${state.max}`;
-      uiTime.textContent=formatTime(state.timeLeft);
-
-      state.slots=Array(state.size).fill(null);
-      state.current=null;
-      state.selectedStoredIndex=-1;
-      state.baseCurrent=null;
-
-      paintBoard();
-      clearHighlights();
-      paintCurrentToken();
-      updateStoreUI();
-    }
-
-    function startTimer(){
-      stopTimer();
-      state.timerId=setInterval(()=>{
-        if(!state.running || state.paused || state.shopOpen) return;
-        state.timeLeft--;
-        uiTime.textContent=formatTime(Math.max(0,state.timeLeft));
-        if(state.timeLeft<=0){
-          gameOver("Se acabó el tiempo.");
-        }
-      }, 1000);
-    }
-
-    function stopTimer(){
-      if(state.timerId){ clearInterval(state.timerId); state.timerId=null; }
-    }
-
-    async function startRun(){
-      await resumeAudioContext();
-
-      state.running=true;
-      state.paused=false;
-      state.shopOpen=false;
-
-      state.floor=1;
-      state.coins=0;
-      uiCoins.textContent="0";
-
-      state.stored=[];
-      state.selectedStoredIndex=-1;
-      state.baseCurrent=null;
-
-      state.mod = {
-        timeBonusPerFloor: 0,
-        coinBonusPerPlace: 0,
-        extraRerollsPerFloor: 0,
-        greenChanceBonus: 0,
-        goldChanceBonus: 0,
+    // Ranking: solo cinco mejores partidas, guardadas en este navegador.
+    const SCORE_KEY = 'numeros_ciegos_top5_v1';
+    const NAME_KEY = 'numeros_ciegos_nombre_v1';
+    const fmtPoints = n => Math.max(0,Math.floor(Number(n)||0)).toLocaleString('es-ES');
+    let records=[];
+    let storageAvailable=true;
+    function cleanRecord(r){
+      if(!r || typeof r!=='object' || !Number.isFinite(r.score) || !Number.isFinite(r.floor))return null;
+      return {
+        id:String(r.id||''), name:String(r.name||'Jugador').trim().slice(0,18)||'Jugador',
+        score:Math.max(0,Math.floor(r.score)), floor:Math.max(1,Math.floor(r.floor)),
+        completed:Math.max(0,Math.floor(r.completed||0)), maxStreak:Math.max(0,Math.floor(r.maxStreak||0)), broken:Math.max(0,Math.floor(r.broken||0)), date:String(r.date||''),
+        status:r.status==='Abandonada'?'Abandonada':'Derrota'
       };
-
-      setMsg("");
-      btnStart.disabled=true;
-
-      applyFloorConfig();
-      startTimer();
-      rollToken();
-
-      toast("🔥 Run empezada");
-      burstFromEl(document.getElementById("topbar"), 40, 1.0);
-
-      if (audio.musicOn) startMusic();
     }
-
-    // =========================
-    // SHOP FLOW
-    // =========================
-    function shopSummaryText(){
-      const parts = [];
-      if (state.mod.timeBonusPerFloor) parts.push(`⏱ +${state.mod.timeBonusPerFloor}s/piso`);
-      if (state.mod.coinBonusPerPlace) parts.push(`🪙 +${state.mod.coinBonusPerPlace}/colocación`);
-      if (state.mod.extraRerollsPerFloor) parts.push(`🔄 +${state.mod.extraRerollsPerFloor} reroll/piso`);
-      if (state.mod.greenChanceBonus) parts.push(`🟩 +${state.mod.greenChanceBonus}% verde`);
-      if (state.mod.goldChanceBonus) parts.push(`🟨 +${state.mod.goldChanceBonus}% dorado`);
-      return parts.length ? `Mejoras activas: ${parts.join(" · ")}` : "Mejoras activas: (ninguna todavía)";
+    const rankSort=(a,b)=>b.score-a.score || b.floor-a.floor || b.completed-a.completed || b.date.localeCompare(a.date);
+    function loadRecords(){
+      try{
+        const stored=JSON.parse(localStorage.getItem(SCORE_KEY)||'[]');
+        records=(Array.isArray(stored)?stored:[]).map(cleanRecord).filter(Boolean).sort(rankSort).slice(0,5);
+      }catch(_){storageAvailable=false;records=[];}
+      $('storageWarning').classList.toggle('hidden',storageAvailable);
     }
-
-    function renderShop(){
-      shopCoinsEl.textContent = String(state.coins);
-      shopSummaryEl.textContent = shopSummaryText();
-
-      shopRerollBtn.disabled = state.coins < 2;
-
-      shopListEl.innerHTML = "";
-      state.shopOffers.forEach((it, idx) => {
-        const wrap = document.createElement("div");
-        wrap.className = "shopItem" + (it.sold ? " sold" : "");
-        wrap.dataset.idx = String(idx);
-
-        const left = document.createElement("div");
-        left.className = "shopLeft";
-        const h = document.createElement("h3");
-        h.textContent = it.name;
-        const p = document.createElement("p");
-        p.textContent = it.desc;
-
-        const price = document.createElement("div");
-        price.className = "price";
-        price.textContent = `Precio: ${it.price}🪙`;
-
-        left.appendChild(h);
-        left.appendChild(p);
-        left.appendChild(price);
-
-        const right = document.createElement("div");
-        right.className = "shopRight";
-
-        const buy = document.createElement("button");
-        buy.textContent = it.sold ? "Comprado" : "Comprar";
-        buy.disabled = it.sold || state.coins < it.price || (it.kind === "token" && state.stored.length >= 3);
-        if (it.kind === "token" && state.stored.length >= 3 && !it.sold) {
-          buy.textContent = "Guardados llenos";
-        }
-        buy.style.background = it.sold ? "#ddd" : "#ffe600";
-
-        buy.addEventListener("click", async () => {
-          await resumeAudioContext();
-          buyShopItem(idx, wrap);
-        });
-
-        right.appendChild(buy);
-
-        wrap.appendChild(left);
-        wrap.appendChild(right);
-        shopListEl.appendChild(wrap);
+    function saveRecord(result){
+      records=[...records,result].sort(rankSort).slice(0,5);
+      try{localStorage.setItem(SCORE_KEY,JSON.stringify(records));}
+      catch(_){storageAvailable=false;$('storageWarning').classList.remove('hidden');}
+      renderRanking();
+      return records.findIndex(r=>r.id===result.id)+1; // 0: no entró en el top 5
+    }
+    function currentName(){return $('playerName').value.trim().slice(0,18)||'Jugador';}
+    function savePlayerName(){
+      try{localStorage.setItem(NAME_KEY,currentName());}catch(_){storageAvailable=false;$('storageWarning').classList.remove('hidden');}
+    }
+    function displayDate(iso){
+      const d=new Date(iso);
+      return Number.isNaN(d.getTime())?'':d.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    }
+    function renderRankRows(id){
+      const root=$(id);root.replaceChildren();
+      if(!records.length){
+        const empty=document.createElement('p');empty.className='text-slate-400 text-xs py-2';
+        empty.textContent='Todavía no hay partidas. ¡La primera puede ser un récord!';root.append(empty);return;
+      }
+      records.forEach((r,i)=>{
+        const row=document.createElement('div');
+        row.className='flex items-center justify-between gap-2 rounded-lg border border-white/5 bg-slate-800/90 px-2 py-1.5'+(state.lastResult?.id===r.id?' ring-1 ring-yellow-300/60':'');
+        const left=document.createElement('span');left.className='min-w-0 truncate text-slate-200';
+        left.textContent=(i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'.')+' '+r.name+' · Piso '+r.floor;
+        const right=document.createElement('span');right.className='flex-shrink-0 text-right';
+        const score=document.createElement('strong');score.className='text-yellow-300 tabular-nums';score.textContent=fmtPoints(r.score);
+        const date=document.createElement('small');date.className='text-[9px] text-slate-500 block';date.textContent=displayDate(r.date);
+        right.append(score,date);row.append(left,right);root.append(row);
       });
     }
-
-    function openShop(){
-      state.shopOpen = true;
-      stopTimer();
-      clearHighlights();
-      sfxOpenShop();
-
-      generateShopOffers();
-      renderShop();
-
-      overlayShop.classList.remove("hidden");
-      overlayShop.setAttribute("aria-hidden", "false");
-
-      toast("🛒 Tienda!");
-      burstFromEl(shopCoinPill, 26, 1.05);
-      shakeGame();
+    function renderRanking(){
+      renderRankRows('menuTop5');renderRankRows('endTop5');
+      $('shareBestButton').disabled=records.length===0;
+      $('bestScoreUI').textContent=fmtPoints(records[0]?.score||0);
     }
-
-    function closeShop(){
-      overlayShop.classList.add("hidden");
-      overlayShop.setAttribute("aria-hidden", "true");
-      state.shopOpen = false;
+    function finalResult(status){
+      if(state.resultSaved)return null;
+      // No guardamos un menú inicial sin movimientos ni puntos.
+      state.resultSaved=true;
+      if(state.score<=0 && state.completedFloors===0)return null;
+      const result={
+        id:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8),
+        name:currentName(), score:state.score, floor:state.floor,
+        completed:state.completedFloors, maxStreak:state.maxStreak, broken:state.brokenCount, date:new Date().toISOString(), status
+      };
+      state.lastResult=result;
+      savePlayerName();
+      const rank=saveRecord(result);
+      return rank;
     }
-
-    function buyShopItem(idx, cardEl){
-      const it = state.shopOffers[idx];
-      if (!it || it.sold) return;
-
-      if (state.coins < it.price) {
-        sfxNoMoney();
-        addTempClass(cardEl, "shake", 360);
-        toast("💸 No tienes monedas");
-        return;
+    function showResult(rank){
+      $('resultPanel').classList.remove('hidden');
+      $('endScore').textContent=fmtPoints(state.score);
+      $('endFloor').textContent=state.floor;
+      $('endCompleted').textContent=state.completedFloors;
+      $('endChallenge').textContent='🔥 Mejor racha: '+state.maxStreak+' · 💥 Reliquias rotas: '+state.brokenCount;
+      $('rankingNotice').textContent=rank===1?'🏆 ¡Nuevo récord personal!':rank>1?'✨ ¡Top '+rank+' de tus mejores partidas!':
+        rank===0?'Sigue jugando para entrar entre tus 5 mejores partidas.':'Partida terminada.';
+      renderRanking();
+    }
+    async function shareResult(result){
+      if(!result)return;
+      const best=records[0]?.score||result.score;
+      const msg='🎮 NÚMEROS CIEGOS — Mi partida\n'+
+        '👤 '+result.name+'\n'+
+        '⭐ Puntuación: '+fmtPoints(result.score)+'\n'+
+        '🏁 Piso alcanzado: '+result.floor+'\n'+
+        '✅ Pisos superados: '+result.completed+'\n'+
+        '🔥 Mejor racha: '+(result.maxStreak||0)+'\n'+
+        '💥 Reliquias rotas: '+(result.broken||0)+'\n'+
+        '🏆 Mi récord: '+fmtPoints(best)+'\n\n¿Puedes superarme? 😎';
+      // Compartir de forma nativa en móviles; si no está disponible, copiar texto.
+      if(navigator.share){
+        try{await navigator.share({title:'Mi resultado en Números Ciegos',text:msg});return;}
+        catch(e){if(e?.name==='AbortError')return;}
       }
-      if (it.kind === "token" && state.stored.length >= 3) {
-        sfxNoMoney();
-        addTempClass(cardEl, "shake", 360);
-        toast("📦 Guardados llenos");
-        return;
+      try{if(!navigator.clipboard?.writeText)throw Error('Sin acceso al portapapeles');await navigator.clipboard.writeText(msg);toast('📋 ¡Resultado copiado!');return;}
+      catch(_){
+        const area=document.createElement('textarea');area.value=msg;area.style.position='fixed';area.style.opacity='0';document.body.append(area);area.select();
+        let copied=false;try{copied=document.execCommand('copy');}catch(_){}area.remove();
+        if(copied)toast('📋 ¡Resultado copiado!');else prompt('Copia este resultado para compartirlo:',msg);
       }
-
-      // pay
-      state.coins -= it.price;
-      uiCoins.textContent = String(state.coins);
-
-      // dopamine: bounce coin pill and burst
-      addTempClass(shopCoinPill, "bounce", 260);
-      burstFromEl(shopCoinPill, 14, 0.9);
-
-      if (it.kind === "mod") {
-        it.apply?.();
-        toast("✅ Mejora comprada");
-      } else if (it.kind === "token") {
-        const cfg = floorConfigs[Math.min(state.floor, floorConfigs.length-1)];
-        const nextMin = cfg.min;
-        const nextMax = cfg.max;
-        let v;
-        if (it.token?.cheap) v = randInt(nextMin, Math.max(nextMin, Math.floor(nextMax * 0.5)));
-        else v = randInt(nextMin, nextMax);
-
-        state.stored.push({ value: v, type: TokenType.Dorado });
-        updateStoreUI();
-        toast("🟨 Dorado añadido");
-      }
-
-      it.sold = true;
-      sfxBuy();
-
-      addTempClass(cardEl, "boughtFx", 420);
-      burstFromEl(cardEl, 24, 1.05);
-
-      // small coin confetti
-      spawnBurst(window.innerWidth * 0.5, window.innerHeight * 0.35, 22, 1);
-
-      renderShop();
-      shopSummaryEl.textContent = shopSummaryText();
     }
 
-    function rerollShopOffers(){
-      if (state.coins < 2) {
-        sfxNoMoney();
-        toast("💸 No tienes para reroll");
-        addTempClass(shopCoinPill, "bounce", 260);
-        return;
+    let toastTimer=null;
+    let audioCtx=null, musicTimer=null, musicStep=0, nextMusicNote=0;
+    let masterBus=null, musicBus=null, sfxBus=null, audioCompressor=null, noiseBuffer=null;
+    let audioSettings={music:true,sfx:true,volume:.8};
+    try {
+      const saved=JSON.parse(localStorage.getItem('nc_audio')||'null');
+      if(saved && typeof saved.music==='boolean'){
+        audioSettings={music:saved.music,sfx:saved.sfx!==false,volume:Number.isFinite(saved.volume)?Math.min(1,Math.max(0,saved.volume)):.8};
       }
-      state.coins -= 2;
-      uiCoins.textContent = String(state.coins);
+    } catch(_) {}
 
-      generateShopOffers();
-      sfxBuy();
-      toast("🔄 Nuevas ofertas");
-      burstFromEl(shopRerollBtn, 18, 0.9);
-      renderShop();
+    // Nueva mezcla: compresor, canales separados y sintetizador polifónico.
+    // No hace falta descargar ficheros de música o efectos.
+    function initAudio(){
+      if(audioCtx)return;
+      const AC=window.AudioContext||window.webkitAudioContext;
+      if(!AC){return;}
+      try{
+        audioCtx=new AC();
+        masterBus=audioCtx.createGain();
+        audioCompressor=audioCtx.createDynamicsCompressor();
+        audioCompressor.threshold.value=-18;
+        audioCompressor.knee.value=18;
+        audioCompressor.ratio.value=3.5;
+        audioCompressor.attack.value=.005;
+        audioCompressor.release.value=.19;
+        musicBus=audioCtx.createGain();sfxBus=audioCtx.createGain();
+        musicBus.gain.value=audioSettings.music?.62:0;
+        sfxBus.gain.value=audioSettings.sfx?.9:0;
+        musicBus.connect(audioCompressor);sfxBus.connect(audioCompressor);
+        audioCompressor.connect(masterBus);masterBus.connect(audioCtx.destination);
+        applyAudioGain();
+        // Ruido corto original, utilizado en percusión y explosiones.
+        noiseBuffer=audioCtx.createBuffer(1,Math.round(audioCtx.sampleRate*.6),audioCtx.sampleRate);
+        const arr=noiseBuffer.getChannelData(0);
+        for(let i=0;i<arr.length;i++)arr[i]=(Math.random()*2-1);
+      }catch(_){audioCtx=null;}
     }
-
-    function continueAfterShop(){
-      closeShop();
-      toast("➡ Continuar");
-      state.floor++;
-      applyFloorConfig();
-      startTimer();
-      rollToken();
+    function applyAudioGain(){
+      if(!audioCtx)return;
+      const t=audioCtx.currentTime;
+      // Curva perceptual: niveles medios de la antigua versión ahora se oyen claramente.
+      masterBus.gain.setTargetAtTime(Math.pow(audioSettings.volume,.65)*.98,t,.015);
+      musicBus.gain.setTargetAtTime(audioSettings.music && musicTimer ? .62 : 0,t,.045);
+      sfxBus.gain.setTargetAtTime(audioSettings.sfx ? .9 : 0,t,.025);
     }
+    function unlockAudio(){
+      initAudio();
+      if(!audioCtx)return Promise.resolve(false);
+      if(audioCtx.state==='suspended')return audioCtx.resume().then(()=>true).catch(()=>false);
+      return Promise.resolve(audioCtx.state==='running');
+    }
+    // Una voz con ataque y caída suave; el filtro redondea los sonidos agudos en móviles.
+    function synth(freq,duration=.12,shape='triangle',level=.16,when=null,bus='sfx',endFreq=null){
+      if(!audioCtx||audioCtx.state==='closed')return;
+      const t=Math.max(audioCtx.currentTime,when??audioCtx.currentTime),end=t+Math.max(.025,duration);
+      const osc=audioCtx.createOscillator(),env=audioCtx.createGain(),filter=audioCtx.createBiquadFilter();
+      osc.type=shape;osc.frequency.setValueAtTime(Math.max(50,freq),t);
+      if(endFreq && endFreq>40)osc.frequency.exponentialRampToValueAtTime(endFreq,end);
+      filter.type='lowpass';filter.frequency.value=(shape==='sawtooth'||shape==='square')?3200:7200;
+      env.gain.setValueAtTime(.0001,t);
+      env.gain.exponentialRampToValueAtTime(Math.max(.001,level),t+.008);
+      env.gain.exponentialRampToValueAtTime(.0001,end);
+      osc.connect(filter);filter.connect(env);env.connect(bus==='music'?musicBus:sfxBus);
+      osc.start(t);osc.stop(end+.025);
+    }
+    function noise(duration=.1,level=.12,when=null,highpass=220){
+      if(!audioCtx||!noiseBuffer)return;
+      const t=Math.max(audioCtx.currentTime,when??audioCtx.currentTime);
+      const src=audioCtx.createBufferSource(),hp=audioCtx.createBiquadFilter(),env=audioCtx.createGain();
+      src.buffer=noiseBuffer;hp.type='highpass';hp.frequency.value=highpass;
+      env.gain.setValueAtTime(Math.max(.001,level),t);
+      env.gain.exponentialRampToValueAtTime(.0001,t+duration);
+      src.connect(hp);hp.connect(env);env.connect(sfxBus);
+      src.start(t);src.stop(t+duration+.02);
+    }
+    function sfx(kind){
+      if(!audioSettings.sfx)return;
+      initAudio();if(!audioCtx)return;
+      const t=audioCtx.currentTime+.012;
+      const n=(f,d,shape='triangle',vol=.16,delay=0,to=null)=>synth(f,d,shape,vol,t+delay,'sfx',to);
+      switch(kind){
+        case 'tap': n(520,.085,'square',.17,0,750);n(780,.06,'sine',.11,.035);break;
+        case 'store': n(440,.15,'triangle',.20,0,310);n(660,.13,'sine',.14,.075,500);break;
+        case 'coin': n(900,.11,'sine',.16);n(1350,.16,'triangle',.12,.07);break;
+        case 'buy': n(480,.11,'square',.17);n(720,.12,'triangle',.17,.085);n(960,.2,'sine',.18,.17);break;
+        case 'error': n(260,.15,'sawtooth',.18,0,145);n(145,.17,'square',.1,.07,110);break;
+        case 'pause': n(390,.15,'square',.13,0,240);break;
+        case 'special': n(660,.1,'triangle',.22,0,880);n(1150,.17,'sine',.15,.07);break;
+        case 'win': [523,659,784,1047].forEach((f,i)=>n(f,.19,'triangle',.19,i*.095));break;
+        case 'break': n(510,.23,'sawtooth',.20,0,95);noise(.16,.17,t+.03,600);break;
+        case 'combo': [750,940,1175].forEach((f,i)=>n(f,.12,'square',.16,i*.05));break;
+        case 'tick': n(980,.06,'square',.20,0,690);noise(.035,.09,t,1800);break;
+        case 'bombSpawn':
+          n(550,.21,'sawtooth',.22,0,300);
+          n(740,.20,'square',.14,.20,450);
+          n(1050,.13,'triangle',.20,.39,820);
+          noise(.17,.12,t,1000);
+          break;
+        case 'bombCritical': n(880,.11,'square',.20);n(440,.1,'sawtooth',.11,.12);break;
+        case 'bombSafe': n(670,.13,'triangle',.2);n(990,.2,'sine',.15,.09);break;
+        case 'bomb':
+          n(240,.48,'sawtooth',.27,0,60);
+          n(105,.44,'square',.17,.06,52);
+          noise(.42,.25,t,120);
+          break;
+        case 'miracle': [784,988,1175,1568,1976].forEach((f,i)=>n(f,.26,'sine',.19,i*.09));break;
+        default: n(520,.09,'triangle',.15);
+      }
+    }
+    // Música chiptune original: 4 acordes, bajo, melodía, kick y hi-hat.
+    // Se programa con el reloj de AudioContext para evitar saltos en móviles.
+    const melody=[72,null,75,null,79,77,75,null,72,null,79,null,75,null,72,null,
+                  72,null,75,79,80,null,79,75,72,null,75,77,79,null,75,null];
+    const bass=[48,null,null,48,48,null,null,48,44,null,null,44,44,null,null,44,
+                51,null,null,51,51,null,null,51,46,null,null,46,46,null,null,46];
+    const rootChords=[[60,63,67],[56,60,63],[63,67,70],[58,62,65]];
+    const midi=m=>440*Math.pow(2,(m-69)/12);
+    function scheduleMusic(){
+      if(!audioCtx || !musicTimer || !audioSettings.music)return;
+      const stepTime=60/120/4;
+      const isShop=state.phase==='shop';
+      while(nextMusicNote<audioCtx.currentTime+.16){
+        const idx=musicStep%32;
+        if(melody[idx]!=null)synth(midi(melody[idx]),stepTime*.91,'triangle',isShop?.12:.17,nextMusicNote,'music');
+        if(bass[idx]!=null)synth(midi(bass[idx]),stepTime*1.65,'square',isShop?.095:.13,nextMusicNote,'music');
+        if(idx%8===0){
+          const chord=rootChords[Math.floor(idx/8)];
+          chord.forEach(m=>synth(midi(m),.34,'sine',.045,nextMusicNote,'music'));
+        }
+        // Beat suave sintetizado, sin tapar los efectos.
+        if(idx%4===0)synth(92,.13,'sine',.13,nextMusicNote,'music',52);
+        if(idx%2===0)synth(1800,.035,'triangle',.05,nextMusicNote,'music',1100);
+        nextMusicNote+=stepTime;musicStep++;
+      }
+    }
+    function startMusic(){
+      initAudio();if(musicTimer||!audioSettings.music||!audioCtx)return;
+      musicStep=0;nextMusicNote=audioCtx.currentTime+.06;
+      musicTimer=setInterval(scheduleMusic,45);
+      applyAudioGain();scheduleMusic();
+    }
+    function stopMusic(){
+      if(musicTimer){clearInterval(musicTimer);musicTimer=null;}
+      applyAudioGain();
+    }
+    function syncAudio(){
+      for(const s of ['Menu','Pause']){
+        $('music'+s).checked=audioSettings.music;
+        $('sfx'+s).checked=audioSettings.sfx;
+        $('volume'+s).value=Math.round(audioSettings.volume*100);
+      }
+      if(!audioSettings.music)stopMusic();
+      else if(['playing','shop'].includes(state.phase))startMusic();
+      applyAudioGain();
+      try{localStorage.setItem('nc_audio',JSON.stringify(audioSettings));}catch(_){}
+    }
+    for(const suffix of ['Menu','Pause']){
+      $('music'+suffix).addEventListener('change',e=>{unlockAudio();audioSettings.music=e.target.checked;syncAudio();});
+      $('sfx'+suffix).addEventListener('change',e=>{unlockAudio();audioSettings.sfx=e.target.checked;syncAudio();});
+      $('volume'+suffix).addEventListener('input',e=>{audioSettings.volume=Number(e.target.value)/100;syncAudio();});
+    }
+    // El navegador necesita un gesto del jugador antes de reproducir audio.
+    for(const name of ['audioTestMenu','audioTestPause']){
+      $(name).addEventListener('click',async()=>{
+        const ready=await unlockAudio();
+        if(!ready){toast('🔇 No se pudo activar el audio. Revisa el silencio del dispositivo.',true);return;}
+        if(!audioSettings.sfx){audioSettings.sfx=true;syncAudio();}
+        sfx('buy');toast('🔊 ¡Audio activado!');
+      });
+    }
+    // Animaciones ligeras, compatibles con móvil.
+    function animate(el){ if(!el||prefersReduced||!el.animate) return;el.animate([{transform:'scale(.88)'},{transform:'scale(1.09)'},{transform:'scale(1)'}],{duration:310,easing:'ease-out'}); }
+    function particles(element,count=14){
+      if(prefersReduced||!element)return;
+      const rect=element.getBoundingClientRect(); const x=rect.left+rect.width/2,y=rect.top+rect.height/2;
+      const colors=['#facc15','#86efac','#93c5fd','#f0abfc','#fb7185'];
+      for(let i=0;i<count;i++){
+        const p=document.createElement('i'),rad=Math.random()*Math.PI*2,dist=28+Math.random()*72;
+        p.className='floating-particle';p.style.left=x+'px';p.style.top=y+'px';
+        p.style.backgroundColor=colors[rand(0,colors.length-1)];
+        p.style.setProperty('--dx',Math.cos(rad)*dist+'px');p.style.setProperty('--dy',Math.sin(rad)*dist+'px');p.style.setProperty('--rot',rand(-280,280)+'deg');
+        document.body.append(p);setTimeout(()=>p.remove(),850);
+      }
+    }
+    function moneyFloat(value,element){
+      if(prefersReduced)return;
+      const rect=element.getBoundingClientRect(),p=document.createElement('span');
+      p.textContent=(value>0?'+':'')+value+' 🪙';p.className='floating-money';p.style.left=(rect.left+rect.width/2-14)+'px';p.style.top=rect.top+'px';
+      document.body.append(p);setTimeout(()=>p.remove(),1000);
+    }
+    function toast(message,bad=false){
+      const el=$('toast');clearTimeout(toastTimer);el.textContent=message;
+      el.classList.remove('hidden');el.classList.toggle('text-rose-300',bad);el.classList.toggle('text-yellow-200',!bad);
+      toastTimer=setTimeout(()=>el.classList.add('hidden'),1800);
+    }
+    function scoreFloat(n,element){
+      if(prefersReduced||!element||n<=0)return;
+      const rect=element.getBoundingClientRect(),p=document.createElement('span');
+      p.className='floating-score';p.textContent='+'+fmtPoints(n)+' ⭐';p.style.left=Math.max(8,rect.left+rect.width/2-32)+'px';p.style.top=rect.top+'px';
+      document.body.append(p);setTimeout(()=>p.remove(),1100);
+    }
+    function flash(color='#fbbf24'){
+      if(prefersReduced)return;
+      const el=$('impactFlash');el.style.background=color;el.classList.remove('hidden','impact-flash');void el.offsetWidth;el.classList.add('impact-flash');setTimeout(()=>el.classList.add('hidden'),360);
+    }
+    function comboBanner(text){
+      if(prefersReduced)return;
+      const el=$('comboBanner');el.textContent=text;el.classList.remove('hidden','combo-reveal');void el.offsetWidth;el.classList.add('combo-reveal');setTimeout(()=>el.classList.add('hidden'),850);
+    }
+    function pulseError(el){el.classList.remove('shake');void el.offsetWidth;el.classList.add('shake');}
+    function setStatus(msg){$('statusUI').textContent=msg;}
+    function showOverlay(name){
+      if(name)hideBombPopup();
+      for(const n of ['menu','pause','shop']){
+        const el=$(n+'Overlay');el.classList.toggle('hidden',n!==name);el.classList.toggle('flex',n===name);
+      }
+    }
+    function hasJoker(id){return state.jokers.includes(id);}
+    function addCoins(n,el=null){state.coins=Math.max(0,state.coins+n);if(el && n>0)moneyFloat(n,el);$('coinsUI').textContent='🪙 '+state.coins;}
+    function addScore(n,element=null){
+      const gain=Math.max(0,Math.floor(n));state.score+=gain;$('scoreUI').textContent=fmtPoints(state.score);
+      if(element&&gain){scoreFloat(gain,element);animate($('scoreUI'));}
+      if(records.length && !state.announcedRecord && state.score>records[0].score){
+        state.announcedRecord=true;flash('#fde047');toast('🏆 ¡HAS SUPERADO TU RÉCORD!');sfx('win');particles($('scoreUI'),24);
+      }
+      const milestone=Math.floor(state.score/2500);
+      if(milestone>0&&!state.milestones.has(milestone)){
+        state.milestones.add(milestone);particles($('scoreUI'),14);
+      }
+    }
+    function streakMultiplier(){return state.streak>=8?2:state.streak>=5?1.5:state.streak>=3?1.25:1;}
+    function resetStreak(){state.streak=0;renderHUD();}
+    function scoreNewCasillas(indices){
+      let count=0;
+      for(const i of indices){if(!state.scoredSlots.has(i)){state.scoredSlots.add(i);count++;}}
+      return Math.round(count*100*streakMultiplier());
+    }
+    function addTime(n){state.timeLeft+=n;renderHUD();}
+    function configFloor(){
+      const c=FLOOR[Math.min(state.floor-1,FLOOR.length-1)];
+      state.size=c.n;state.max=c.max+Math.max(0,state.floor-6)*60;
+      state.timeLeft=Math.max(42,c.sec-Math.max(0,state.floor-6)*3)+(hasJoker('clock')?12:0);
+      // Las tiradas gratuitas NO se acumulan de un piso a otro. Las compradas sí.
+      state.baseRerolls=c.rerolls;state.rescueUsed=false;state.eraseMode=false;state.iceLockTurns=0;state.bombsDrawnThisFloor=0;
+      state.board=Array(state.size).fill(null);state.current=null;state.selected=-1;
+      state.streak=0;state.scoredSlots=new Set();
+      render();
+    }
+    function validSlots(token){
+      if(!token)return[];
+      const result=[];
+      for(let i=0;i<state.size;i++){
+        if(state.board[i])continue;
+        if(token.type==='gold'||token.type==='rainbow'||token.type==='miracle'){result.push(i);continue;}
+        let left=0,right=state.max+1;
+        for(let j=i-1;j>=0;j--)if(state.board[j] && typeof state.board[j].value==='number'){left=state.board[j].value;break;}
+        for(let j=i+1;j<state.size;j++)if(state.board[j] && typeof state.board[j].value==='number'){right=state.board[j].value;break;}
+        if(left<token.value && token.value<right)result.push(i);
+      }
+      return result;
+    }
+    function activeToken(){return state.selected>=0 ? state.stored[state.selected] : state.current;}
+    function isBomb(token){return token?.type==='bomb';}
+    function liveBombs(){return state.stored.filter(isBomb);}
+    function bombTimerText(token){return (Math.max(0,token.fuseLeft??0)).toFixed(1)+'s';}
+    let bombPopupToken=null, bombPopupAutoTimer=null, bombPopupExpandedByUser=false;
+    function minimizeBombPopup(){
+      $('bombPopup').classList.add('bomb-pop-compact');
+      $('bombMinimize').setAttribute('aria-label','Reducir alerta de bomba');
+    }
+    function expandBombPopup(){
+      bombPopupExpandedByUser=true;clearTimeout(bombPopupAutoTimer);
+      $('bombPopup').classList.remove('bomb-pop-compact');
+    }
+    function hideBombPopup(){
+      clearTimeout(bombPopupAutoTimer);$('bombPopup').classList.add('hidden');
+      $('bombPopup').classList.remove('bomb-pop-critical');
+      // Al guardar o colocar una bomba, se permite un nuevo aviso si se recupera después.
+      if(state.phase==='playing'&&!isBomb(activeToken()))bombPopupToken=null;
+    }
+    function updateBombHUD(){
+      const token=activeToken(),active=state.phase==='playing'&&isBomb(token);
+      $('bombWarning').classList.toggle('hidden',!active);
+      if(!active){hideBombPopup();return;}
+      const total=Math.max(1,token.fuseTotal||BOMB_FUSE(state.floor));
+      const left=Math.max(0,token.fuseLeft||0);
+      const pct=Math.min(100,Math.max(0,left/total*100));
+      $('bombSeconds').textContent=bombTimerText(token);
+      $('bombBar').style.width=pct+'%';
+      $('bombPopupTime').textContent=left.toFixed(1);
+      $('bombCompactTime').textContent=left.toFixed(1)+'s';
+      $('bombPopupBar').style.width=pct+'%';
+      $('bombDial').style.setProperty('--angle',(pct*3.6)+'deg');
+      $('bombPopupAdvice').textContent=state.selected>=0?'Bomba recuperada: colócala antes de que explote.':
+        (state.stored.length<state.capacity?'¡Una casilla verde o GUARDAR!':'¡Tu mochila está llena! Colócala ya.');
+      $('bombPopupStore').disabled=state.selected>=0||state.stored.length>=state.capacity||state.iceLockTurns>0||state.eraseMode||state.managerOpen;
+      $('bombPopupDefuse').disabled=state.defusers<=0||state.managerOpen;
+      $('bombPopupDefuse').textContent='🧯 Desactivar ('+state.defusers+')';
+      const popup=$('bombPopup');
+      popup.classList.toggle('bomb-pop-critical',left<=4);
+      if(bombPopupToken!==token){
+        bombPopupToken=token;bombPopupExpandedByUser=false;
+        popup.classList.remove('bomb-pop-compact','bomb-pop-enter');void popup.offsetWidth;
+        popup.classList.add('bomb-pop-enter');
+        $('bombAnnouncement').textContent='¡Atención! Ha aparecido una bomba. Tienes '+Math.ceil(left)+' segundos para colocarla, guardarla o desactivarla.';
+        sfx('bombSpawn');flash('#fb7185');particles($('currentUI'),24);comboBanner('💣 ¡BOMBA!');pulseError($('board'));
+        if(!prefersReduced&&navigator.vibrate)navigator.vibrate([80,45,110]);
+        clearTimeout(bombPopupAutoTimer);
+        bombPopupAutoTimer=setTimeout(()=>{if(state.phase==='playing'&&activeToken()===token&&!bombPopupExpandedByUser)minimizeBombPopup();},3300);
+      }
+      popup.classList.remove('hidden');
+    }
+    function createToken(forcedType=null){
+      let type=forcedType;
+      if(!type){
+        // Leyenda: 0,1% por generación natural desde el piso 3, sin depender del trébol.
+        if(state.floor>=3 && Math.random()<.001)type='miracle';
+        else {
+          const rule=floorPressure(state.floor),positive=['green','blue','purple','pink','gold','rainbow'];
+          const hasBomb=state.bombsDrawnThisFloor>0||isBomb(state.current)||liveBombs().length>0;
+          const weights=Object.entries(TYPES).filter(([id])=>id!=='miracle').map(([id,info])=>{
+            let w=id==='normal'?info.weight:positive.includes(id)?info.weight*rule.specialFactor:info.weight*rule.hazardFactor;
+            if(id==='ice'&&state.floor<5)w=0;
+            if(id==='curse'&&state.floor<4)w=0;
+            if(id==='bomb'&&hasBomb)w=0;
+            if(state.guaranteeSpecial && !positive.includes(id))w=0;
+            if(positive.includes(id)&&hasJoker('clover'))w*=1.55;
+            if(id==='rainbow'&&hasJoker('prism'))w+=7*rule.specialFactor;
+            return {id,w};
+          });
+          const total=weights.reduce((n,w)=>n+w.w,0);let roll=Math.random()*total;
+          for(const item of weights){roll-=item.w;if(roll<0){type=item.id;break;}}
+        }
+        state.guaranteeSpecial=false;
+      }
+      const token={type:type||'normal',value:['gold','rainbow','miracle'].includes(type)?null:rand(1,state.max)};
+      if(token.type==='bomb'){
+        token.fuseTotal=BOMB_FUSE(state.floor);token.fuseLeft=token.fuseTotal;
+        // Una sola bomba natural por piso para evitar muertes inevitables por acumulación.
+        state.bombsDrawnThisFloor++;
+      }
+      return token;
+    }
+    function rollCurrent(){
+      state.selected=-1;
+      const guaranteed=state.guaranteeSpecial;
+      state.current=createToken();
+      if(isBomb(state.current)&&validSlots(state.current).length===0&&state.stored.length>=state.capacity){
+        // No generamos bombas imposibles si la mochila ya está llena.
+        for(let t=0;t<25&&validSlots(state.current).length===0;t++)state.current.value=rand(1,state.max);
+        if(validSlots(state.current).length===0)state.current=createToken('normal');
+      }
+      // En los dos primeros pisos, evitamos números imposibles al generarlos.
+      if(state.floor<=2){
+        let tries=0;
+        const specialTypes=['green','blue','purple','pink','gold','rainbow'];
+        while(validSlots(state.current).length===0 && tries++<40){
+          state.current=guaranteed?createToken(specialTypes[rand(0,specialTypes.length-1)]):createToken();
+        }
+        if(validSlots(state.current).length===0)state.current=createToken('gold');
+      }
+      render();checkStuck();
+    }
+    function nextFloor(){
+      if(state.phase!=='shop')return;
+      const upcomingFloor=state.floor+1;
+      const expired=state.stored.find(t=>isBomb(t)&&t.expiresAtFloor<=upcomingFloor);
+      if(expired){
+        flash('#f43f5e');comboBanner('💥 ¡BOMBA OLVIDADA!');
+        endRun('La bomba guardada ha caducado: debías utilizarla antes de terminar el piso '+(expired.expiresAtFloor-1)+'.');return;
+      }
+      state.floor=upcomingFloor;state.phase='playing';showOverlay(null);configFloor();rollCurrent();startClock();sfx('tap');toast('🏁 Piso '+state.floor);
+    }
+    function startRun(){
+      unlockAudio();stopClock();
+      if(['playing','paused','shop'].includes(state.phase))finalResult('Abandonada');
+      savePlayerName();
+      state.phase='playing';state.floor=1;state.coins=0;state.stored=[];state.capacity=1;state.jokers=[];state.erasers=0;state.defusers=0;state.iceLockTurns=0;state.baseRerolls=0;state.bonusRerolls=0;state.guaranteeSpecial=false;state.shopRerolls=0;state.rescueReadyFloor=1;state.managerOpen=false;state.managerFrom=null;state.lastBreaks=[];state.brokenCount=0;state.streak=0;state.maxStreak=0;state.announcedRecord=false;state.milestones=new Set();
+      state.score=0;state.completedFloors=0;state.scoredSlots=new Set();state.resultSaved=false;state.lastResult=null;state.lastFloorAward=0;
+      $('resultPanel').classList.add('hidden');
+      showOverlay(null);configFloor();rollCurrent();startClock();startMusic();toast('✨ ¡Nueva partida!');
+    }
+    function endRun(reason){
+      if(!['playing','shop'].includes(state.phase))return;
+      state.phase='over';stopClock();stopMusic();sfx(reason.toLowerCase().includes('bomba')?'bomb':'error');
+      $('pauseEmoji').textContent='💀';$('pauseTitle').textContent='FIN DE PARTIDA';
+      $('pauseDetail').textContent='Llegaste al piso '+state.floor+' y superaste '+state.completedFloors+' pisos. '+reason;
+      const rank=finalResult('Derrota');showResult(rank);
+      $('resumeButton').classList.add('hidden');showOverlay('pause');render();
+    }
+    function pause(){
+      if(state.phase!=='playing')return;
+      state.phase='paused';stopClock();stopMusic();sfx('pause');
+      $('pauseEmoji').textContent='⏸️';$('pauseTitle').textContent='PAUSA';
+      $('pauseDetail').textContent='El cronómetro está detenido. Piso '+state.floor+' · '+fmtPoints(state.score)+' puntos.';
+      $('resultPanel').classList.add('hidden');
+      $('resumeButton').classList.remove('hidden');showOverlay('pause');syncAudio();render();
+    }
+    function resume(){
+      if(state.phase!=='paused')return;
+      unlockAudio();state.phase='playing';showOverlay(null);startClock();startMusic();render();
+    }
+    function backMenu(){
+      if(['playing','paused','shop'].includes(state.phase))finalResult('Abandonada');
+      state.phase='menu';stopClock();stopMusic();showOverlay('menu');render();renderRanking();
+    }
+    function startClock(){
+      stopClock();state.lastTime=performance.now();
+      state.timer=setInterval(()=>{
+        if(state.phase!=='playing')return;
+        const now=performance.now(),elapsed=Math.max(0,(now-state.lastTime)/1000);state.timeLeft-=elapsed;state.lastTime=now;
+        const bomb=activeToken();
+        if(isBomb(bomb)){
+          const oldSec=Math.ceil(bomb.fuseLeft);
+          bomb.fuseLeft=Math.max(0,bomb.fuseLeft-elapsed);
+          if(Math.ceil(bomb.fuseLeft)<oldSec && bomb.fuseLeft<=5)sfx(bomb.fuseLeft<=2?'bombCritical':'tick');
+          if(bomb.fuseLeft<=0){renderHUD();flash('#f43f5e');comboBanner('💥 ¡BOOM!');endRun('La bomba explotó antes de colocarla.');return;}
+        }
+        if(state.timeLeft<=0){state.timeLeft=0;renderHUD();endRun('Se acabó el tiempo.');}
+        else renderHUD();
+      },100);
+    }
+    function stopClock(){if(state.timer){clearInterval(state.timer);state.timer=null;}}
 
-    // =========================
-    // Floor clear / game over
-    // =========================
+    function spendTime(cost,action){
+      state.timeLeft=Math.max(0,state.timeLeft-cost);renderHUD();
+      if(state.timeLeft<=0){endRun('Agotaste el tiempo al usar '+action+'.');return false;}
+      toast('⏳ '+action+': −'+cost+' segundos');return true;
+    }
+    function grantForPlaced(count,fromElement){addCoins(count*(1+(hasJoker('pig')?1:0)),fromElement);}
+    function legalFill(target){
+      if(target<0||target>=state.size||state.board[target])return false;
+      let low=1,high=state.max;
+      for(let i=target-1;i>=0;i--)if(state.board[i]&&typeof state.board[i].value==='number'){low=state.board[i].value+1;break;}
+      for(let i=target+1;i<state.size;i++)if(state.board[i]&&typeof state.board[i].value==='number'){high=state.board[i].value-1;break;}
+      if(low>high)return false;
+      state.board[target]={type:'auto',value:Math.floor((low+high)/2)};
+      return true;
+    }
+    function place(index){
+      if(state.phase!=='playing'||state.managerOpen)return;
+      if(state.eraseMode){
+        if(!state.board[index]){sfx('error');return;}
+        state.board[index]=null;state.erasers--;state.eraseMode=false;resetStreak();
+        sfx('special');toast('🧽 Casilla liberada');render();checkStuck();return;
+      }
+      const token=activeToken();if(!token || !validSlots(token).includes(index)){sfx('error');pulseError($('board'));return;}
+      const playedFromStorage=state.selected>=0;
+      // Hielo cancela la racha del jugador, pero no bloquea el tablero.
+      if(token.type==='ice')resetStreak();
+      if(token.type==='curse')resetStreak();
+      const element=document.querySelector('[data-board-index="'+index+'"]');
+      state.board[index]={...token};
+      let extra=0,extraIndices=[];let message='¡Bien colocado!';
+      if(token.type==='green'){
+        if(legalFill(index-1)){extra=1;extraIndices.push(index-1);message='🟩 ¡Semilla! Casilla anterior completada.';}
+        else message='🟩 Semilla colocada.';
+      }
+      if(token.type==='blue'){
+        if(legalFill(index+1)){extra=1;extraIndices.push(index+1);message='🟦 ¡Espejo! Casilla siguiente completada.';}
+        else message='🟦 Espejo colocado.';
+      }
+      if(token.type==='rainbow'){
+        const target=[index+1,index-1].find(i=>i>=0&&i<state.size&&!state.board[i]);
+        if(target!==undefined){state.board[target]={type:'gold',value:null};extra=1;extraIndices.push(target);message='🌈 ¡DOBLE COMODÍN!';}
+        else message='🌈 ¡Comodín arcoíris!';
+      }
+      if(token.type==='purple'){addTime(12);message='🟪 ¡+12 segundos!';}
+      if(token.type==='pink'){addCoins(3,element);state.guaranteeSpecial=true;message='💗 +3 monedas. ¡Próximo número especial!';}
+      if(token.type==='gold')message='🟨 ¡Casilla asegurada!';
+      if(token.type==='bomb'){message='💣 ¡BOMBA DESACTIVADA A TIEMPO!';flash('#fb923c');comboBanner('💣 ¡SALVADO!');sfx('bombSafe');particles(element,34);}
+      if(token.type==='curse'){state.timeLeft=Math.max(0,state.timeLeft-10);message='☠️ Maldición: −10 segundos · +160 puntos';flash('#ef4444');}
+      if(token.type==='ice'){state.iceLockTurns=3;message='🧊 Hielo: los guardados quedan bloqueados 2 colocaciones';flash('#67e8f9');}
+      if(token.type==='miracle'){
+        // Las estrellas son comodines sin valor numérico: completan el tablero sin alterar el orden ya fijado.
+        for(let i=0;i<state.size;i++)if(!state.board[i]){state.board[i]={type:'auto',value:null};extraIndices.push(i);}
+        extra=extraIndices.length;message='🌟 ¡MILAGRO! ¡TABLERO COMPLETO!';
+        flash('#e879f9');comboBanner('🌟 ¡MILAGRO LEGENDARIO!');sfx('miracle');particles($('board'),65);
+      }
+      // Puntuar casillas nuevas; la goma no sirve para repetir puntos.
+      // La racha recompensa decidir rápido sin usar guardar/dados/borrador.
+      state.streak++;state.maxStreak=Math.max(state.maxStreak,state.streak);
+      const multiplier=streakMultiplier();
+      const points=scoreNewCasillas([index,...extraIndices])+(token.type==='normal'?0:40)+(extra?75:0)+(token.type==='curse'?160:0)+(token.type==='bomb'?200:0)+(token.type==='miracle'?2000:0);
+      addScore(points,element);
+      if(state.streak===3||state.streak===5||state.streak===8){
+        comboBanner('🔥 RACHA '+state.streak+' · x'+multiplier.toFixed(2));
+        sfx('combo');particles(element,Math.min(36,14+state.streak*2));
+      }
+      if(extra){flash(token.type==='rainbow'?'#e879f9':'#4ade80');comboBanner('⚡ ¡COMBO! +75');}
+      grantForPlaced(1+extra,element);
+      if(extra && hasJoker('magnet'))addCoins(2,element);
+      if(playedFromStorage){state.stored.splice(state.selected,1);state.selected=-1;}
+      else state.current=null;
+      if(state.iceLockTurns>0)state.iceLockTurns--;
+      sfx(token.type==='normal'?'tap':'special');particles(element,extra?22:10);
+      setStatus(message);toast(message);render();animate(document.querySelector('[data-board-index="'+index+'"]'));
+      if(state.timeLeft<=0){endRun('La maldición consumió tus últimos segundos.');return;}
+      if(state.board.every(Boolean)){floorClear();return;}
+      if(state.current===null)rollCurrent();else {render();checkStuck();}
+    }
+    function checkStuck(){
+      if(state.phase!=='playing'||!state.current)return;
+      if(state.selected>=0){if(!validSlots(activeToken()).length)setStatus('↩️ No encaja el guardado: tócalo otra vez para volver al número de mano.');return;}
+      const bombInHand=isBomb(state.current);
+      const possible=validSlots(state.current).length>0 || (state.iceLockTurns===0&&!bombInHand&&state.stored.some(t=>validSlots(t).length>0));
+      if(possible)return;
+      if(state.stored.length<state.capacity&&state.iceLockTurns===0){setStatus(bombInHand?'💣 Guarda la bomba antes de que explote.':'📦 No encaja: guárdalo o utiliza otro.');return;}
+      if(currentRerolls()>0&&!bombInHand){setStatus('🎲 Ninguno encaja: utiliza un reroll.');return;}
+      if(state.erasers>0){setStatus('🧽 Puedes borrar una casilla para salir del bloqueo.');return;}
+      if(state.defusers>0&&bombInHand){setStatus('🧯 Desactiva la bomba para sobrevivir.');return;}
+      if(!bombInHand&&hasJoker('lifebuoy')&&!state.rescueUsed&&state.floor>=state.rescueReadyFloor){
+        state.rescueUsed=true;state.current={type:'gold',value:null};state.selected=-1;
+        resetStreak();
+        // Se salva el bloqueo, pero el salvavidas casi siempre se rompe.
+        const broke=Math.random()<.90;
+        if(broke){breakRelic('lifebuoy','al rescatarte (90%)');}
+        else {state.rescueReadyFloor=state.floor+3;toast('🛟 ¡Rescate! Sobrevivió, pero descansa 2 pisos');}
+        sfx('special');flash('#38bdf8');comboBanner('🛟 ¡SALVADO!');render();return;
+      }
+      endRun('No quedan movimientos, guardados útiles ni objetos de rescate.');
+    }
+    function store(){
+      if(state.phase!=='playing'||state.managerOpen||!state.current||state.selected>=0||state.stored.length>=state.capacity||state.eraseMode||state.iceLockTurns>0)return;
+      const cost=floorPressure(state.floor).saveCost;
+      if(cost&&!spendTime(cost,'Guardar'))return;
+      if(isBomb(state.current)){
+        // La bomba cuenta el piso actual y los dos siguientes: al empezar el cuarto, explota.
+        state.current.expiresAtFloor=state.floor+3;
+        sfx('bombSafe');toast('💣 Bomba guardada: úsala antes de terminar el piso '+(state.current.expiresAtFloor-1));
+      }else toast('📦 Número guardado');
+      state.stored.push(state.current);state.current=null;state.selected=-1;resetStreak();
+      sfx('store');rollCurrent();
+    }
+    function selectStored(i){
+      if(state.phase!=='playing'||state.managerOpen||!state.stored[i]||state.eraseMode||state.iceLockTurns>0)return;
+      if(isBomb(state.current)&&state.selected<0){toast('💣 La bomba activa no permite cambiar de número. Colócala o guárdala.',true);return;}
+      state.selected=state.selected===i?-1:i;sfx('tap');render();checkStuck();
+    }
+    function reroll(){
+      if(state.phase!=='playing'||state.managerOpen||currentRerolls()<=0||state.eraseMode||isBomb(activeToken()))return;
+      if(state.baseRerolls>0)state.baseRerolls--;else state.bonusRerolls--;state.selected=-1;state.current=null;resetStreak();
+      const cost=floorPressure(state.floor).rerollCost;if(cost&&!spendTime(cost,'Reroll'))return;
+      sfx('store');toast('🎲 ¡Nuevo número!');rollCurrent();
+    }
+    function toggleErase(){
+      if(state.phase!=='playing'||state.managerOpen||state.erasers<=0)return;
+      state.eraseMode=!state.eraseMode;state.selected=-1;sfx('tap');render();
+      if(state.eraseMode)toast('🧽 Toca una casilla ocupada');
+    }
+    function useDefuser(){
+      if(!['playing','shop'].includes(state.phase)||state.managerOpen||state.defusers<=0)return;
+      let target=null;
+      if(state.phase==='playing'&&isBomb(activeToken()))target=activeToken();
+      else target=state.stored.find(isBomb);
+      if(!target){toast('🧯 No hay ninguna bomba que desactivar');return;}
+      state.defusers--;resetStreak();
+      if(target===state.current){state.current=null;state.selected=-1;}
+      else {
+        const index=state.stored.indexOf(target);state.stored.splice(index,1);
+        state.selected=-1;
+      }
+      sfx('bombSafe');flash('#fb923c');comboBanner('🧯 ¡DESACTIVADA!');toast('🧯 Bomba eliminada sin puntos');
+      if(state.phase==='shop'){render();renderShop();return;}
+      if(!state.current)rollCurrent();else{render();checkStuck();}
+    }
     function floorClear(){
-      stopTimer();
-      clearHighlights();
-      sfxWin();
-
-      // Completion bonus
-      addCoins(4);
-
-      toast(`🏁 Piso ${state.floor} completado!`);
-      shakeGame();
-
-      // Big confetti burst from topbar center
-      burstFromEl(document.getElementById("topbar"), 120, 1.4);
-      spawnBurst(window.innerWidth * 0.5, 120, 120, 1.3);
-
-      setMsg(`✅ Piso ${state.floor} completado. Abres la tienda (bonus +4🪙).`, "#0b6d00");
-      openShop();
+      if(state.phase!=='playing')return;
+      stopClock();state.phase='shop';state.eraseMode=false;
+      // +4 monedas y hasta +3 por acabar con tiempo de sobra.
+      const bonus=4+Math.min(3,Math.floor(state.timeLeft/30));addCoins(bonus);
+      state.completedFloors++;
+      state.lastFloorAward=400*state.floor+Math.floor(Math.max(0,state.timeLeft)*3);
+      addScore(state.lastFloorAward);
+      $('shopPointsAward').textContent='⭐ Bono de piso: +'+fmtPoints(state.lastFloorAward);
+      $('shopScoreTotal').textContent='TOTAL: '+fmtPoints(state.score);
+      if(hasJoker('interest')&&state.coins>=8)addCoins(3);
+      // Las reliquias se desgastan después de aplicar sus efectos de este piso.
+      state.lastBreaks=rollEndFloorBreaks();
+      sfx('win');particles($('board'),32);flash('#fde047');setStatus('🏆 Piso completado. ¡A la tienda!');
+      state.shopRerolls=0;generateOffers();renderShop();render();showOverlay('shop');
+      toast('🏆 ¡Piso '+state.floor+' completado!');
     }
 
-    function gameOver(reason){
-      state.running=false;
-      state.paused=false;
-      state.shopOpen=false;
-      stopTimer();
-      clearHighlights();
-      stopMusic();
-      sfxLose();
-
-      shakeGame();
-      toast("💀 Game Over");
-      spawnBurst(window.innerWidth * 0.5, window.innerHeight * 0.35, 60, 0.9);
-
-      document.getElementById("currentToken").style.background="var(--danger)";
-      setMsg(`❌ Game Over: ${reason}`, "rgb(200,0,0)");
-      btnStart.disabled=false;
-      btnStore.disabled=true;
-
-      showPauseMenu("Game Over", { canResume: false });
+    // Desgaste aleatorio después de cada piso y rescate frágil.
+    function breakRelic(id,reason){
+      const ix=state.jokers.indexOf(id);if(ix<0)return null;
+      const item=GOODS.find(x=>x.id===id);state.jokers.splice(ix,1);state.brokenCount++;
+      const chip=Array.from($('jokers').children).find(x=>x.textContent.includes(item.title));
+      if(chip&&!prefersReduced){const clone=chip.cloneNode(true),r=chip.getBoundingClientRect();clone.classList.add('relic-breaking');clone.style.cssText='position:fixed;z-index:90;left:'+r.left+'px;top:'+r.top+'px;pointer-events:none;';document.body.append(clone);setTimeout(()=>clone.remove(),580);}
+      sfx('break');flash('#fb7185');particles($('jokers'),18);
+      toast('💥 '+item.icon+' '+item.title+' se ha roto '+reason);
+      renderJokers();return item;
     }
-
-    // =========================
-    // MENÚ PRINCIPAL / PAUSA
-    // =========================
-    function showMainMenu(){
-      overlayMenu.classList.remove("hidden");
-      overlayPause.classList.add("hidden");
-      overlayPause.setAttribute("aria-hidden", "true");
-
-      overlayShop.classList.add("hidden");
-      overlayShop.setAttribute("aria-hidden", "true");
-
-      state.running=false;
-      state.paused=false;
-      state.shopOpen=false;
-      stopTimer();
-      stopMusic();
-
-      btnStart.disabled=false;
-      btnStore.disabled=true;
-      clearHighlights();
-    }
-
-    function showPauseMenu(title="Pausa", { canResume=true } = {}){
-      pauseTitle.textContent = title;
-      pauseResume.style.display = canResume ? "inline-block" : "none";
-      overlayPause.classList.remove("hidden");
-      overlayPause.setAttribute("aria-hidden", "false");
-    }
-
-    function hidePauseMenu(){
-      overlayPause.classList.add("hidden");
-      overlayPause.setAttribute("aria-hidden", "true");
-    }
-
-    async function pauseGame(){
-      if(!state.running || state.paused || state.shopOpen) return;
-      await resumeAudioContext();
-      state.paused=true;
-      stopMusic();
-      sfxPause();
-      showPauseMenu("Pausa", { canResume: true });
-      clearHighlights();
-      updateStoreUI();
-      toast("⏸ Pausa");
-    }
-
-    async function resumeGame(){
-      if(!state.running || !state.paused) return;
-      await resumeAudioContext();
-      state.paused=false;
-      sfxResume();
-      hidePauseMenu();
-      if (audio.musicOn) startMusic();
-      updateStoreUI();
-      afterTokenChanged();
-      toast("▶ Reanudar");
-    }
-
-    async function restartRun(){
-      hidePauseMenu();
-      overlayMenu.classList.add("hidden");
-      await startRun();
-    }
-
-    // =========================
-    // OPCIONES (sync)
-    // =========================
-    function syncOptionsToUI(){
-      musicToggle.checked = audio.musicOn;
-      sfxToggle.checked = audio.sfxOn;
-      volSlider.value = String(Math.round(audio.vol * 100));
-
-      musicToggle2.checked = audio.musicOn;
-      sfxToggle2.checked = audio.sfxOn;
-      volSlider2.value = String(Math.round(audio.vol * 100));
-    }
-
-    function applyOptionsFromUI({music, sfx, vol}){
-      setMusicOn(music);
-      setSfxOn(sfx);
-      setVolume01(vol);
-      syncOptionsToUI();
-    }
-
-    // =========================
-    // Eventos UI
-    // =========================
-    btnStart.addEventListener("click", async () => {
-      overlayMenu.classList.add("hidden");
-      await startRun();
-    });
-
-    btnStore.addEventListener("click", async () => {
-      await resumeAudioContext();
-      storeCurrent();
-    });
-
-    btnPause.addEventListener("click", async () => { await pauseGame(); });
-
-    storedEls.forEach((el,i)=>el.addEventListener("click", async () => {
-      await resumeAudioContext();
-      selectStored(i);
-    }));
-
-    btnToggleInfo.addEventListener("click", toggleInfo);
-    btnToggleInfoA.addEventListener("click", toggleInfo);
-
-    menuPlay.addEventListener("click", async () => {
-      overlayMenu.classList.add("hidden");
-      await startRun();
-    });
-    menuToggleInfo.addEventListener("click", toggleInfo);
-
-    pauseResume.addEventListener("click", resumeGame);
-    pauseRestart.addEventListener("click", restartRun);
-    pauseMenu.addEventListener("click", showMainMenu);
-
-    shopRerollBtn.addEventListener("click", async () => {
-      await resumeAudioContext();
-      rerollShopOffers();
-    });
-    shopContinueBtn.addEventListener("click", () => {
-      continueAfterShop();
-    });
-
-    musicToggle.addEventListener("change", async () => {
-      await resumeAudioContext();
-      applyOptionsFromUI({ music: musicToggle.checked, sfx: audio.sfxOn, vol: audio.vol });
-    });
-    sfxToggle.addEventListener("change", async () => {
-      await resumeAudioContext();
-      applyOptionsFromUI({ music: audio.musicOn, sfx: sfxToggle.checked, vol: audio.vol });
-    });
-    volSlider.addEventListener("input", async () => {
-      await resumeAudioContext();
-      applyOptionsFromUI({ music: audio.musicOn, sfx: audio.sfxOn, vol: Number(volSlider.value)/100 });
-    });
-
-    musicToggle2.addEventListener("change", async () => {
-      await resumeAudioContext();
-      applyOptionsFromUI({ music: musicToggle2.checked, sfx: audio.sfxOn, vol: audio.vol });
-    });
-    sfxToggle2.addEventListener("change", async () => {
-      await resumeAudioContext();
-      applyOptionsFromUI({ music: audio.musicOn, sfx: sfxToggle2.checked, vol: audio.vol });
-    });
-    volSlider2.addEventListener("input", async () => {
-      await resumeAudioContext();
-      applyOptionsFromUI({ music: audio.musicOn, sfx: audio.sfxOn, vol: Number(volSlider2.value)/100 });
-    });
-
-    window.addEventListener("keydown", async (e) => {
-      if (e.key === "Escape") {
-        if (!overlayMenu.classList.contains("hidden")) return;
-        if (state.shopOpen) return;
-        if (state.running && !state.paused) await pauseGame();
-        else if (state.running && state.paused) await resumeGame();
+    function rollEndFloorBreaks(){
+      const broken=[];
+      for(const id of [...state.jokers]){
+        const item=GOODS.find(x=>x.id===id);
+        if(item&&Math.random()*100<breakPct(item)){const lost=breakRelic(id,'al terminar el piso');if(lost)broken.push(lost);}
       }
-    });
+      if(broken.length){comboBanner('💥 '+broken.length+' RELIQUIA'+(broken.length===1?' ROTA':'S ROTAS'));}
+      return broken;
+    }
+    function sellValue(item){return Math.max(1,Math.floor(item.price*.4));}
+    function openRelicManager(){
+      if(state.managerOpen||!['playing','shop'].includes(state.phase))return;
+      state.managerOpen=true;state.managerFrom=state.phase;
+      if(state.phase==='playing')stopClock();
+      $('relicOverlay').classList.remove('hidden');$('relicOverlay').classList.add('flex');
+      renderRelicManager();render();
+    }
+    function closeRelicManager(){
+      if(!state.managerOpen)return;
+      const from=state.managerFrom;state.managerOpen=false;state.managerFrom=null;
+      $('relicOverlay').classList.add('hidden');$('relicOverlay').classList.remove('flex');
+      if(from==='playing'&&state.phase==='playing')startClock();
+      if(state.phase==='shop')renderShop();
+      render();
+    }
+    function renderRelicManager(){
+      const root=$('relicList');root.replaceChildren();
+      if(!state.jokers.length){const p=document.createElement('p');p.className='text-slate-400 text-sm py-4 text-center';p.textContent='No tienes reliquias. Puedes comprar en la siguiente tienda.';root.append(p);}
+      for(const id of state.jokers){
+        const item=GOODS.find(x=>x.id===id),row=document.createElement('div');
+        row.className='rounded-xl bg-slate-900/75 border border-white/10 p-3 flex items-center justify-between gap-2';
+        const details=document.createElement('div');details.className='min-w-0 flex-1';
+        const title=document.createElement('div');title.className='text-sm font-black text-white';title.textContent=item.icon+' '+item.title;
+        const description=document.createElement('div');description.className='text-[11px] text-slate-400 mt-1';description.textContent=item.desc;
+        const risk=document.createElement('div');risk.className='text-[11px] font-bold text-rose-300 mt-1';
+        risk.textContent='💔 '+breakPct(item)+'% al completar un piso'+(id==='lifebuoy'?' · 90% si te salva':'');
+        const sell=document.createElement('button');sell.type='button';sell.className='rounded-lg bg-rose-700 hover:bg-rose-600 px-3 py-2 text-xs font-black whitespace-nowrap';sell.textContent='♻️ +'+sellValue(item)+' 🪙';
+        sell.addEventListener('click',()=>{
+          if(!state.managerOpen)return;
+          state.jokers.splice(state.jokers.indexOf(id),1);addCoins(sellValue(item),sell);sfx('buy');particles(row,12);
+          toast('♻️ '+item.title+' vendida');renderRelicManager();render();if(state.phase==='shop')renderShop();
+        });
+        details.append(title,description,risk);row.append(details,sell);root.append(row);
+      }
+      $('relicFooter').textContent='Huecos: '+state.jokers.length+'/5 · La venta devuelve el 40% del precio (redondeando hacia abajo).';
+    }
 
-    // =========================
-    // Init
-    // =========================
-    buildBoard();
-    applyFloorConfig();
-    updateStoreUI();
-    applyInfoVisibility();
-    setMsg("Pulsa ▶ Empezar run para jugar (o usa el menú).", "#111");
-    syncOptionsToUI();
-    overlayMenu.classList.remove("hidden");
-    uiCoins.textContent = "0";
+    function availableGoods(){return GOODS.filter(item=>item.kind!=='joker'||!hasJoker(item.id));}
+    function weightedItem(options){
+      const sum=options.reduce((n,o)=>n+o.weight,0);let r=Math.random()*sum;
+      for(const item of options){r-=item.weight;if(r<=0)return item;}return options.at(-1);
+    }
+    function generateOffers(){
+      const pool=availableGoods().slice();state.offers=[];
+      while(pool.length&&state.offers.length<4){const pick=weightedItem(pool),idx=pool.indexOf(pick);pool.splice(idx,1);state.offers.push({...pick,sold:false});}
+    }
+    function purchase(index){
+      if(state.phase!=='shop')return;
+      const offer=state.offers[index];if(!offer||offer.sold)return;
+      if(state.coins<offer.price){toast('💸 Faltan monedas',true);sfx('error');return;}
+      if(offer.kind==='token'&&state.stored.length>=state.capacity){toast('📦 Inventario lleno: compra otro hueco',true);return;}
+      if(offer.kind==='joker'&&(state.jokers.length>=5||hasJoker(offer.id))){toast('🃏 Vende una reliquia para dejar hueco',true);openRelicManager();return;}
+      addCoins(-offer.price);offer.sold=true;
+      if(offer.kind==='joker'){state.jokers.push(offer.id);if(offer.id==='lifebuoy')state.rescueReadyFloor=Math.min(state.rescueReadyFloor,state.floor+1);}
+      else if(offer.kind==='token'){
+        const next=FLOOR[Math.min(state.floor,FLOOR.length-1)].max+Math.max(0,state.floor-5)*60;
+        const token=createToken(offer.token);if(token.value!==null)token.value=rand(1,next);
+        state.stored.push(token);
+      }
+      else if(offer.action==='rerolls')state.bonusRerolls+=2;
+      else if(offer.action==='eraser')state.erasers++;
+      else if(offer.action==='defuser')state.defusers++;
+      sfx('buy');toast('✨ ¡'+offer.title+' conseguido!');
+      if(offer.rarity==='Legendario'){flash('#e879f9');comboBanner('🌟 ¡OBJETO LEGENDARIO!');sfx('miracle');particles($('shopCoinsUI'),55);}
+      else if(offer.rarity==='Épico'){flash('#c084fc');comboBanner('💎 ¡RELIQUIA ÉPICA!');particles($('shopCoinsUI'),38);}
+      else if(offer.rarity==='Raro')particles($('shopCoinsUI'),22);
+      render();renderShop();particles($('shopCoinsUI'),12);
+    }
+    function buyCapacity(){
+      if(state.phase!=='shop'||state.capacity>=3)return;
+      const price=CAPACITY_PRICES[state.capacity];
+      if(state.coins<price){sfx('error');toast('💸 No tienes suficientes monedas para ampliar la mochila',true);return;}
+      addCoins(-price);state.capacity++;sfx('buy');flash('#38bdf8');particles($('buyCapacityButton'),26);
+      comboBanner('📦 ¡NUEVO HUECO!');toast('📦 Mochila ampliada a '+state.capacity+' guardados');
+      render();renderShop();
+    }
+    function rerollOffers(){
+      if(state.phase!=='shop')return;
+      const cost=2+2*state.shopRerolls;
+      if(state.coins<cost){toast('💸 No tienes suficientes monedas',true);return;}
+      addCoins(-cost);state.shopRerolls++;generateOffers();renderShop();sfx('store');toast('🔄 Nuevas ofertas');
+    }
+
+    function renderHUD(){
+      $('floorUI').textContent=state.floor;
+      $('timeUI').textContent=Math.floor(Math.max(0,state.timeLeft)/60)+':'+String(Math.floor(Math.max(0,state.timeLeft)%60)).padStart(2,'0');
+      $('timeUI').className='text-base sm:text-lg tabular-nums '+(state.timeLeft<16?'text-rose-400':'');
+      $('rangeUI').textContent='1–'+state.max;
+      $('coinsUI').textContent='🪙 '+state.coins;
+      $('filledUI').textContent=state.board.filter(Boolean).length+'/'+state.size;
+      $('scoreUI').textContent=fmtPoints(state.score);
+      const pressure=floorPressure(state.floor);
+      $('dangerUI').textContent=state.floor<=4?'🌱 Dificultad progresiva':
+        '☠️ Guardar −'+pressure.saveCost+'s · Dados −'+pressure.rerollCost+'s';
+      $('streakUI').textContent=state.iceLockTurns>0?'🧊 Guardados bloqueados: '+state.iceLockTurns+' turno(s)':'🔥 Racha '+state.streak+' · x'+streakMultiplier().toFixed(2);
+      updateBombHUD();
+    }
+    function renderBoard(){
+      const root=$('board');root.replaceChildren();
+      const token=activeToken(),valid=state.phase==='playing'&&!state.eraseMode?validSlots(token):[];
+      for(let i=0;i<state.size;i++){
+        const cell=state.board[i],ok=valid.includes(i),erase=state.eraseMode&&!!cell;
+        const b=document.createElement('button');b.type='button';b.dataset.boardIndex=i;
+        b.className='relative w-full h-9 sm:h-10 rounded-lg border flex items-center justify-center gap-2 text-base font-black transition-transform active:scale-[.985] '+(
+          erase?'bg-rose-700/60 border-rose-300 text-white':
+          cell?(cell.type==='miracle'?'bg-fuchsia-700/70 border-fuchsia-300 rare-glow':cell.type==='bomb'?'bg-amber-800/70 border-orange-400':cell.type==='curse'?'bg-rose-900/70 border-rose-500':cell.type==='ice'?'bg-cyan-900/80 border-cyan-500':'bg-slate-700/90 border-white/10')+' text-white':
+          ok?'bg-green-600 border-green-300 text-white slot-available':
+          'bg-slate-900/80 border-white/10 text-slate-500');
+        if(ok)b.setAttribute('aria-label','Colocar número en casilla '+(i+1));
+        const num=document.createElement('span');num.textContent=cell?(cell.value===null?'★':cell.value):'·';
+        const left=document.createElement('span');left.className='absolute left-3 text-[10px] font-bold '+(cell?'text-slate-400':'text-white/45');left.textContent=pos(i);
+        b.append(left,num);
+        if(cell){const icon=document.createElement('span');icon.className='absolute right-3 text-xs';icon.textContent=TYPES[cell.type]?.icon||(cell.type==='auto'?'✨':'');b.append(icon);}
+        if(erase){const x=document.createElement('span');x.className='absolute right-3 text-sm';x.textContent='✖';b.append(x);}
+        b.addEventListener('click',()=>{unlockAudio();place(i);});root.append(b);
+      }
+    }
+    function renderStorage(){
+      const root=$('storage');root.replaceChildren();
+      for(let i=0;i<3;i++){
+        const token=state.stored[i],locked=i>=state.capacity,b=document.createElement('button');b.type='button';
+        const selected=state.selected===i;
+        b.className='min-w-0 rounded-lg border h-11 sm:h-12 text-center transition active:scale-95 '+(locked?'bg-slate-950/90 border-dashed border-slate-700 opacity-70':selected?'bg-sky-800 border-sky-300 ring-2 ring-sky-400/50':isBomb(token)?'bg-rose-900/80 border-rose-400 bomb-alert':token?'bg-slate-700 border-white/15':'bg-slate-900/50 border-dashed border-white/15');
+        const top=document.createElement('div');top.className='text-sm font-black';top.textContent=locked?'🔒':token?(TYPES[token.type].icon+' '+(token.value===null?'★':token.value)):'+';
+        const bottom=document.createElement('div');bottom.className='text-[9px] text-slate-300 truncate px-1';
+        bottom.textContent=locked?'Compra en tienda':isBomb(token)?'Hasta piso '+(token.expiresAtFloor-1):token?TYPES[token.type].name:'Vacío';
+        b.title=isBomb(token)?'Mecha: '+bombTimerText(token)+' · Debes colocarla hasta el piso '+(token.expiresAtFloor-1):locked?'Compra un hueco en la tienda':'';
+        b.append(top,bottom);b.disabled=locked||!token||state.phase!=='playing'||state.eraseMode||state.iceLockTurns>0||(isBomb(state.current)&&state.selected<0);
+        b.addEventListener('click',()=>selectStored(i));root.append(b);
+      }
+      $('storedCountUI').textContent=state.stored.length+'/'+state.capacity;
+      $('storageLockUI').textContent=state.iceLockTurns>0?'🧊 '+state.iceLockTurns+' turnos':'';
+    }
+    function renderJokers(){
+      const root=$('jokers');root.replaceChildren();
+      if(!state.jokers.length){const p=document.createElement('span');p.className='text-xs text-slate-500';p.textContent='Todavía no tienes reliquias.';root.append(p);}
+      for(const id of state.jokers){
+        const item=GOODS.find(x=>x.id===id),d=document.createElement('button');
+        d.type='button';d.title=item.desc+' · '+breakPct(item)+'% de rotura al terminar piso';
+        d.className='joker-shine rounded-lg px-2 py-1 text-[11px] bg-indigo-500/20 border border-indigo-300/25 text-indigo-100 font-semibold active:scale-95';
+        d.textContent=item.icon+' '+item.title+' · 💔'+breakPct(item)+'%';
+        d.addEventListener('click',openRelicManager);root.append(d);
+      }
+      $('jokerCountUI').textContent=state.jokers.length+'/5';
+      $('shopRelicCount').textContent=state.jokers.length+'/5';
+    }
+    function render(){
+      renderHUD();renderBoard();renderStorage();renderJokers();
+      const active=activeToken();
+      $('currentUI').textContent=active?(active.value===null?'★':active.value):'—';
+      $('kindUI').textContent=active?TYPES[active.type].icon+' '+TYPES[active.type].name:'Sin número';
+      $('kindUI').className='text-xs font-semibold truncate '+(active?TYPES[active.type].color:'text-slate-300');
+      $('storeButton').disabled=state.phase!=='playing'||state.managerOpen||!state.current||state.selected>=0||state.stored.length>=state.capacity||state.eraseMode||state.iceLockTurns>0;
+      $('rerollButton').disabled=state.phase!=='playing'||state.managerOpen||currentRerolls()<=0||state.eraseMode||isBomb(active);
+      $('rerollCount').textContent=currentRerolls();
+      $('eraserButton').disabled=state.phase!=='playing'||state.managerOpen||state.erasers<=0;
+      $('eraserButton').classList.toggle('ring-2',state.eraseMode);$('eraserButton').classList.toggle('ring-rose-300',state.eraseMode);
+      $('eraserCount').textContent=state.erasers;
+      $('defuseButton').disabled=state.phase!=='playing'||state.managerOpen||state.defusers<=0||(!isBomb(active)&&liveBombs().length===0);
+      $('defuseCount').textContent=state.defusers;
+      $('pauseButton').disabled=state.phase!=='playing'||state.managerOpen;
+      $('manageRelicsButton').disabled=!['playing','shop'].includes(state.phase)||state.managerOpen;
+      $('infoButton').setAttribute('aria-expanded',String(state.info));
+      $('infoPanel').classList.toggle('hidden',!state.info);
+    }
+    function renderShop(){
+      $('shopCoinsUI').textContent='🪙 '+state.coins;
+      const cost=2+state.shopRerolls*2;
+      $('shopRerollButton').textContent='🔄 Ofertas · '+cost+' 🪙';$('shopRerollButton').disabled=state.coins<cost;
+      $('capacityDescription').textContent=state.capacity>=3?'3/3 desbloqueados · Mochila al máximo':state.capacity+'/3 desbloqueados · Mejora permanente durante esta partida';
+      const price=CAPACITY_PRICES[state.capacity];
+      $('buyCapacityButton').textContent=state.capacity>=3?'✅ MÁXIMO':price+' 🪙 · DESBLOQUEAR';
+      $('buyCapacityButton').disabled=state.capacity>=3||state.coins<price;
+      const bombs=liveBombs(),bombNotice=$('shopBombNotice');
+      bombNotice.classList.toggle('hidden',bombs.length===0);
+      $('shopBombText').textContent=bombs.length?'💣 ¡BOMBA GUARDADA! Debes usarla antes de terminar el piso '+Math.min(...bombs.map(b=>b.expiresAtFloor-1))+' o perderás toda la partida.':'';
+      $('shopDefuseButton').textContent='🧯 Desactivar bomba ('+state.defusers+' kits)';
+      $('shopDefuseButton').disabled=state.defusers<=0;
+      const root=$('shopCards');root.replaceChildren();
+      state.offers.forEach((it,i)=>{
+        const card=document.createElement('article');
+        const color=it.rarity==='Legendario'?'border-yellow-300/80 bg-fuchsia-800/40 rare-glow':it.rarity==='Épico'?'border-fuchsia-400/60 bg-fuchsia-900/20':it.rarity==='Raro'?'border-sky-400/50 bg-sky-900/20':'border-white/15 bg-slate-900/70';
+        card.className='shop-card '+(it.sold?'sold opacity-50 ':'')+'rounded-xl p-2.5 sm:p-3 border flex flex-col '+color;
+        const headline=document.createElement('div');headline.className='flex justify-between items-start gap-1';
+        const emoji=document.createElement('span');emoji.className='text-2xl sm:text-3xl';emoji.textContent=it.icon;
+        const rarity=document.createElement('span');rarity.className='text-[9px] rounded px-1.5 py-1 border border-white/15 text-slate-300';rarity.textContent=it.rarity;
+        headline.append(emoji,rarity);
+        const title=document.createElement('strong');title.className='text-xs sm:text-sm mt-2 leading-tight';title.textContent=it.title;
+        const desc=document.createElement('p');desc.className='text-[10px] sm:text-xs text-slate-400 mt-1 flex-1 leading-snug';desc.textContent=it.desc+(it.kind==='joker'?' · 💔 '+breakPct(it)+'% rotura/piso':'');
+        const btn=document.createElement('button');btn.className='rounded-lg mt-2 py-2 text-xs font-black '+(it.sold?'bg-slate-700 text-slate-400':'bg-yellow-300 hover:bg-yellow-200 text-slate-950 disabled:bg-slate-600 disabled:text-slate-300');
+        const full=it.kind==='token'&&state.stored.length>=state.capacity;
+        const limit=it.kind==='joker'&&state.jokers.length>=5;
+        btn.textContent=it.sold?'COMPRADO':full?'SIN ESPACIO':limit?'⚙️ VENDER UNA':it.price+' 🪙 · COMPRAR';
+        btn.disabled=it.sold||state.coins<it.price||full;
+        btn.addEventListener('click',()=>{unlockAudio();if(limit)openRelicManager();else purchase(i);});
+        card.append(headline,title,desc,btn);root.append(card);
+      });
+      $('shopNote').textContent='Guardados '+state.stored.length+'/'+state.capacity+' · Reliquias '+state.jokers.length+'/5 · ⚠️ Las reliquias pueden romperse al superar pisos';
+      const notice=$('shopBreakNotice');notice.classList.toggle('hidden',state.lastBreaks.length===0);
+      notice.textContent=state.lastBreaks.length?'💥 ¡Rotura! '+state.lastBreaks.map(x=>x.icon+' '+x.title).join(' · ')+' — puedes comprar otras para recuperarte.':'';
+    }
+
+    // Botones, opciones y atajos.
+    $('playButton').addEventListener('click',startRun);
+    $('pauseButton').addEventListener('click',pause);
+    $('resumeButton').addEventListener('click',resume);
+    $('restartButton').addEventListener('click',startRun);
+    $('menuButton').addEventListener('click',backMenu);
+    $('nextFloorButton').addEventListener('click',nextFloor);
+    $('shopRerollButton').addEventListener('click',()=>{unlockAudio();rerollOffers();});
+    $('manageRelicsButton').addEventListener('click',openRelicManager);
+    $('shopManageRelicsButton').addEventListener('click',openRelicManager);
+    $('closeRelicButton').addEventListener('click',closeRelicManager);
+    $('storeButton').addEventListener('click',()=>{unlockAudio();store();});
+    $('rerollButton').addEventListener('click',()=>{unlockAudio();reroll();});
+    $('eraserButton').addEventListener('click',()=>{unlockAudio();toggleErase();});
+    $('defuseButton').addEventListener('click',()=>{unlockAudio();useDefuser();});
+    $('bombPopupStore').addEventListener('click',()=>{unlockAudio();store();});
+    $('bombPopupDefuse').addEventListener('click',()=>{unlockAudio();useDefuser();});
+    $('bombMinimize').addEventListener('click',minimizeBombPopup);
+    $('bombCollapsed').addEventListener('click',expandBombPopup);
+    $('buyCapacityButton').addEventListener('click',()=>{unlockAudio();buyCapacity();});
+    $('shopDefuseButton').addEventListener('click',()=>{unlockAudio();useDefuser();});
+    $('infoButton').addEventListener('click',()=>{state.info=!state.info;render();});
+    addEventListener('keydown',e=>{
+      if(e.key==='Escape'){if(state.managerOpen)closeRelicManager();else if(state.phase==='playing')pause();else if(state.phase==='paused')resume();return;}
+      if(state.phase!=='playing'||state.managerOpen||e.target instanceof HTMLInputElement)return;
+      if(e.key.toLowerCase()==='g')store();
+      else if(e.key.toLowerCase()==='r')reroll();
+      else if(e.key.toLowerCase()==='e')toggleErase();
+      else if('1234567890'.includes(e.key)&&e.key.length===1)place(e.key==='0'?9:Number(e.key)-1);
+    });
+    document.addEventListener('visibilitychange',()=>{if(document.hidden&&state.phase==='playing')pause();});
+    // Compartir resultados, ranking persistente y nombre de jugador.
+    $('playerName').addEventListener('change',savePlayerName);
+    $('playerName').addEventListener('blur',savePlayerName);
+    $('shareResultButton').addEventListener('click',()=>shareResult(state.lastResult));
+    $('shareBestButton').addEventListener('click',()=>shareResult(records[0]));
+    try{$('playerName').value=localStorage.getItem(NAME_KEY)||'';}catch(_){storageAvailable=false;}
+    loadRecords();renderRanking();
+    // Estado inicial del juego
+    state.board=Array(5).fill(null);syncAudio();render();showOverlay('menu');
   </script>
 </body>
 </html>
