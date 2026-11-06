@@ -2229,3 +2229,70 @@ button[data-help-title],.shop-card[data-help-title] { cursor:pointer; }
 .guide-actions { display:flex; align-items:center; gap:7px; }
 .guide-close { width:31px; height:31px; border-radius:8px; border:1px solid #536985; background:#273950; color:#dce7f4; font-size:13px; font-weight:800; }
 .guide-close:hover { background:#385374; }
+
+
+/* SOTIORNO v3: controles para los nuevos números. */
+.token-power-panel { margin:-3px 0 12px; padding:10px 12px; border:1px solid #497e7e; border-radius:12px; background:linear-gradient(135deg,#0d2834,#12233b); }
+.token-power-panel.hidden,.token-power-row.hidden,.tile-legend.hidden { display:none; }
+.token-power-row { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+.token-power-title { display:flex; align-items:center; gap:6px; font-size:11px; font-weight:900; letter-spacing:.045em; color:#ccfbf1; }
+.token-power-title small { display:block; margin-left:5px; font-size:10px; font-weight:650; letter-spacing:0; color:#8fa9c1; }
+.token-power-actions,.dilemma-choices { display:flex; align-items:center; gap:7px; }
+.token-power-actions button,.dilemma-choices button { min-width:33px; height:33px; padding:0 9px; border:1px solid #559eae; border-radius:8px; background:#1c4654; font-size:18px; font-weight:900; color:#e0fbff; }
+.token-power-actions button:hover:enabled,.dilemma-choices button:hover:enabled { background:#23697c; }
+.token-power-actions button:disabled,.dilemma-choices button:disabled { opacity:.32; cursor:not-allowed; }
+.token-power-actions strong { width:40px; font-size:18px; font-variant-numeric:tabular-nums; text-align:center; color:#fff; }
+.token-power-actions .token-reset { font-size:10px; min-width:0; padding:0 10px; border-color:#51617a; background:#2b3851; }
+.dilemma-choices button { font-size:17px; min-width:51px; background:#2d3c52; border-color:#5a6f89; }
+.dilemma-choices button.is-picked { color:#20202b; background:#fbd46b; border-color:#f5d66c; box-shadow:0 0 0 2px #fbd46b33; }
+.dilemma-choices>span { color:#9aacc5; font-size:10px; font-weight:900; }
+.tone-elastic .legend-icon { background:#145b60; color:#9ffbe9; }
+.tone-dilemma .legend-icon { background:#715521; color:#fde68a; }
+
+/* Casillas especiales: una cinta en la propia casilla, sin tapar el número. */
+.board-slot { position:relative; min-height:54px; height:54px; padding-bottom:10px; }
+.board-slot__tile-tag { position:absolute; right:10px; bottom:3px; font-size:8px; line-height:1; font-weight:900; letter-spacing:.07em; display:inline-flex; gap:3px; align-items:center; opacity:.95; }
+.board-slot__tile-tag .ui-glyph { width:10px; height:10px; }
+.board-slot.tile-reward { border-color:#b58b3d; box-shadow:inset 3px 0 #e3ae4c; }
+.board-slot.tile-sealed { border-color:#8b79b1; box-shadow:inset 3px 0 #aa90e9; }
+.board-slot.tile-urgent { border-color:#d47968; box-shadow:inset 3px 0 #f49c72; }
+.board-slot.tile-flex { border-color:#498cab; box-shadow:inset 3px 0 #63c4ed; }
+.board-slot.tile-reward .board-slot__tile-tag,.tile-reward strong { color:#fbd782; }
+.board-slot.tile-sealed .board-slot__tile-tag,.tile-sealed strong { color:#d6c4ff; }
+.board-slot.tile-urgent .board-slot__tile-tag,.tile-urgent strong { color:#ffb59b; }
+.board-slot.tile-flex .board-slot__tile-tag,.tile-flex strong { color:#a5ebff; }
+.board-slot.tile-sealed.is-blocked { background:repeating-linear-gradient(-45deg,#29253c,#29253c 9px,#201e30 9px,#201e30 18px); }
+.board-slot.is-flex-target { border-color:#7bece3; background:#07565b; box-shadow:0 0 0 2px #2dd4bf33; }
+.board-slot.flex-selected { border-color:#fcd34d; background:#57421b; }
+.board-slot.is-flex-target .board-slot__status,.board-slot.flex-selected .board-slot__status { color:#fff; }
+.tile-legend { display:flex; flex-wrap:wrap; gap:5px; padding:9px 2px 2px; }
+.tile-legend-chip { border:1px solid #405573; border-radius:7px; padding:4px 7px; font-size:9px; font-weight:850; cursor:help; background:#14223c; }
+.tile-legend-chip.tile-reward { color:#fbd782; border-color:#806534; }
+.tile-legend-chip.tile-sealed { color:#d6c4ff; border-color:#69588b; }
+.tile-legend-chip.tile-urgent { color:#ffb59b; border-color:#99564b; }
+.tile-legend-chip.tile-flex { color:#a5ebff; border-color:#39768c; }
+.tile-guide-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.tile-guide-card { border:1px solid #435675; padding:11px; border-radius:10px; background:#1a2b45; }
+.tile-guide-card strong { display:flex; gap:6px; align-items:center; font-size:12px; font-weight:850; }
+.tile-guide-card p { color:#bfcde0; font-size:11px; line-height:1.5; margin-top:6px; }
+.route-guide { background:#322640; border:1px solid #6c547c; border-radius:11px; padding:12px; margin-top:11px; color:#e4d8ed; font-size:11px; line-height:1.55; }
+.route-guide strong { color:#f9e2a1; }
+/* Elección de ruta: modal independiente de la tienda. */
+.route-panel { width:min(510px,100%); max-height:92dvh; overflow:auto; border:1px solid #997647; border-radius:22px; padding:22px; background:#142238; box-shadow:0 22px 80px #000b; text-align:center; }
+.route-panel h2 { color:#ffdf88; font-size:25px; font-weight:950; letter-spacing:-.035em; line-height:1.2; margin-top:7px; }
+.route-intro { margin:11px auto 17px; font-size:12px; color:#b8c8df; max-width:35ch; line-height:1.55; }
+.route-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:11px; }
+.route-choice { min-width:0; display:flex; align-items:center; flex-direction:column; gap:8px; padding:16px 10px 11px; border:1px solid #55718e; border-radius:15px; background:#172c46; color:#eaf3ff; text-align:center; transition:transform .15s,background .15s; }
+.route-choice:hover { transform:translateY(-2px); background:#203956; }
+.route-choice:focus-visible { outline:3px solid white; outline-offset:3px; }
+.route-choice-icon { width:43px; height:43px; display:grid; place-items:center; border-radius:12px; background:#1f604f; color:#a7f3d0; font-size:24px; }
+.route-chaos { border-color:#98644f; background:#3c2431; }
+.route-chaos:hover { background:#563047; }
+.route-chaos .route-choice-icon { background:#763d34; color:#fbbf9d; }
+.route-choice strong { font-size:12px; font-weight:900; }
+.route-choice>span:not(.route-choice-icon):not(.route-choice-reward):not(.route-choose) { font-size:11px; color:#aebed0; line-height:1.45; min-height:34px; }
+.route-choice-reward { font-size:18px; font-weight:900; color:#fbd778; }
+.route-choose { width:100%; margin-top:auto; padding:9px 3px; border-radius:8px; background:#86efac; color:#103126; font-size:10px; font-weight:900; }
+.route-chaos .route-choose { background:#f6af8a; color:#49251c; }
+.route-back { margin-top:14px; padding:9px 13px; color:#b9c5d9; text-decoration:underline; font-size:11px; }
+@media(max-width:430px){ .token-power-row { justify-content:center; } .token-power-title { width:100%; justify-content:center; } .board-slot { min-height:52px; } .tile-guide-grid { grid-template-columns:1fr; } .route-panel { padding:16px 12px; } .route-choice { padding:14px 7px 10px; gap:7px; } .route-choice strong { font-size:11px; } }
