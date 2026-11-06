@@ -1,5 +1,5 @@
 // La iconografía es un conjunto de SVG propios; ningún emoji depende de fuentes del SO.
-    const GLYPH_MAP = {"🔢":"digits","🟩":"seed","🟦":"mirror","🟪":"clock","💗":"heart","🟨":"wild","🌈":"rainbow","💣":"bomb","☠️":"skull","🧊":"ice","🌟":"miracle","🎲":"dice","🧽":"eraser","🧯":"defuse","🐷":"pig","🍀":"clover","🧲":"magnet","🛟":"life","🔮":"prism","🏦":"bank","🥇":"medal","🥈":"medal","🥉":"medal","🔥":"fire","💥":"burst","🏆":"trophy","📦":"box","🎵":"music","🔊":"volume","🔇":"mute","⭐":"star","🎮":"gamepad","👤":"user","🏁":"flag","📋":"clipboard","✨":"sparkle","♻️":"recycle","🔒":"lock","✅":"check","⚙️":"gear","🔄":"refresh","💔":"broken","⚠️":"warning","⏸️":"pause","⏸":"pause","▶":"play","📤":"share","❔":"help","🛒":"shop","🪙":"coin","🌱":"seed","💸":"coin","💀":"skull","⚡":"burst","↩️":"back","💎":"gem","✖":"cross","😎":"cool","⏳":"hourglass","🃏":"wild","↻":"refresh","⌂":"home"};
+    const GLYPH_MAP = {"🔢":"digits","🟩":"seed","🟦":"mirror","🟪":"clock","💗":"heart","🟨":"wild","🌈":"rainbow","💣":"bomb","☠️":"skull","🧊":"ice","🌟":"miracle","🎲":"dice","🧽":"eraser","🧯":"defuse","🐷":"pig","🍀":"clover","🧲":"magnet","🛟":"life","🔮":"prism","🏦":"bank","🥇":"medal","🥈":"medal","🥉":"medal","🔥":"fire","💥":"burst","🏆":"trophy","📦":"box","🎵":"music","🔊":"volume","🔇":"mute","⭐":"star","🎮":"gamepad","👤":"user","🏁":"flag","📋":"clipboard","✨":"sparkle","♻️":"recycle","🔒":"lock","✅":"check","⚙️":"gear","🔄":"refresh","💔":"broken","⚠️":"warning","⏸️":"pause","⏸":"pause","▶":"play","📤":"share","❔":"help","🛒":"shop","🪙":"coin","🌱":"seed","💸":"coin","💀":"skull","⚡":"burst","↩️":"back","💎":"gem","✖":"cross","😎":"cool","⏳":"hourglass","🃏":"wild","↻":"refresh","⌂":"home","↕":"elastic","⇄":"dilemma"};
     const GLYPH_REGEX = new RegExp(Object.keys(GLYPH_MAP)
       .sort((a,b)=>b.length-a.length)
       .map(s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|'),'gu');
@@ -68,7 +68,9 @@
       bomb:    {icon:'💣', name:'Bomba', color:'text-rose-300', weight:5},
       curse:   {icon:'☠️', name:'Maldito −10s', color:'text-red-300', weight:7},
       ice:     {icon:'🧊', name:'Hielo: bloquea guardados', color:'text-cyan-300', weight:6},
-      miracle: {icon:'🌟', name:'MILAGRO LEGENDARIO', color:'text-fuchsia-300', weight:0}
+      miracle: {icon:'🌟', name:'MILAGRO LEGENDARIO', color:'text-fuchsia-300', weight:0},
+      elastic: {icon:'↕', name:'Elástico ±3', color:'text-teal-300', weight:7},
+      dilemma: {icon:'⇄', name:'Dilema', color:'text-amber-300', weight:6}
     };
     const TYPE_HELP = {
       normal: 'Número normal. Solo encaja entre los valores que ya estén colocados a su izquierda y derecha.',
@@ -82,7 +84,9 @@
       curse: 'Maldito: pierdes 10 segundos al colocarlo, pero obtienes 160 puntos extra.',
       ice: 'Hielo: al colocarlo bloqueas temporalmente el acceso a guardados durante dos colocaciones.',
       miracle: 'Milagro legendario: completa todas las casillas restantes sin alterar el orden. Probabilidad natural muy baja.',
-      auto: 'Casilla completada automáticamente por un poder especial.'
+      auto: 'Casilla completada automáticamente por un poder especial.',
+      elastic: 'Elástico: antes de colocar, puedes variar el número entre −3 y +3 respecto a su valor inicial, sin salir del rango del piso.',
+      dilemma: 'Dilema: elige uno de los dos valores que te ofrece. Solo colocarás el seleccionado y el otro desaparecerá.'
     };
     const FLOOR = [
       {n:5,max:50,sec:100,rerolls:2}, {n:6,max:80,sec:95,rerolls:2},
@@ -96,6 +100,12 @@
       specialFactor:floor>=10?.3:floor>=6?.42:floor>=4?.72:1,
       hazardFactor:floor<3?0:floor<=4?.58:floor<=6?1:floor<=9?1.35:1.6
     });
+    const TILE_HELP={
+      reward:'Premio: la primera vez que rellenas esta casilla ganas 3 monedas, más 2 si el valor termina en 0 o en 5.',
+      sealed:'Sellada: no puedes usarla hasta que una casilla contigua esté ocupada. Se abre sin gastar turnos.',
+      urgent:'Urgente: cuando se rellena una casilla vecina tienes 3 colocaciones para ocuparla. Si fallas pierdes 6 segundos, pero sigues jugando.',
+      flex:'Flexible: una vez por piso puedes mover su número a un hueco contiguo vacío si sigue en orden (o intercambiarlo con un comodín vecino). Sin puntos extra.'
+    };
     const CAPACITY_PRICES={1:8,2:14};
     const BOMB_FUSE = floor => floor>=10?8:floor>=7?10:13;
     function breakPct(item){return item.breakChance??0;}
@@ -106,6 +116,8 @@
       {id:'gold',icon:'🟨',title:'Comodín dorado',desc:'Un comodín que cabe en cualquier hueco.',price:4,rarity:'Común',kind:'token',token:'gold',weight:8},
       {id:'blue',icon:'🟦',title:'Número espejo',desc:'Genera un número mayor a su derecha.',price:4,rarity:'Común',kind:'token',token:'blue',weight:7},
       {id:'pink',icon:'💗',title:'Número corazón',desc:'+3 monedas y otro especial asegurado.',price:4,rarity:'Común',kind:'token',token:'pink',weight:7},
+      {id:'elastic',icon:'↕',title:'Número elástico',desc:'Ajusta su valor hasta ±3 antes de colocarlo.',price:5,rarity:'Raro',kind:'token',token:'elastic',weight:5},
+      {id:'dilemma',icon:'⇄',title:'Número dilema',desc:'Elige uno de dos valores antes de colocarlo.',price:5,rarity:'Raro',kind:'token',token:'dilemma',weight:5},
       {id:'rainbow',icon:'🌈',title:'Número arcoíris',desc:'Ocupa 2 casillas consecutivas vacías.',price:9,rarity:'Épico',kind:'token',token:'rainbow',weight:3},
       {id:'rerolls',icon:'🎲',title:'Dados cargados',desc:'+2 cambios de número para usar cuando quieras.',price:4,rarity:'Común',kind:'consumable',action:'rerolls',weight:9},
       {id:'eraser',icon:'🧽',title:'Goma mágica',desc:'Borra 1 número colocado y libera su casilla.',price:5,rarity:'Raro',kind:'consumable',action:'eraser',weight:6},
@@ -129,7 +141,9 @@
       coins:0, jokers:[], offers:[], shopRerolls:0, guaranteeSpecial:false, rescueUsed:false, rescueReadyFloor:1,
       info:false, managerOpen:false, managerFrom:null, lastBreaks:[], brokenCount:0,
       streak:0, maxStreak:0, announcedRecord:false, milestones:new Set(),
-      score:0, completedFloors:0, scoredSlots:new Set(), resultSaved:false, lastResult:null, lastFloorAward:0
+      score:0, completedFloors:0, scoredSlots:new Set(), resultSaved:false, lastResult:null, lastFloorAward:0,
+      tiles:[], rewardedTiles:new Set(), flexUsed:false, flexOrigin:null, urgentRemaining:null, urgentFailed:false,
+      routeMode:null, routePending:false
     };
     // Ayudas accesibles: un único popup para ratón/teclado y un icono i en pantallas táctiles.
     function setHelp(el,title,description){
@@ -198,6 +212,7 @@
         {target:'rerollButton',title:'Cambiar el número',text:'El dado descarta tu número actual y saca otro. Tienes pocos cambios por piso: úsalos cuando no encuentres un buen hueco.'},
         {target:'currentCard',title:'Presta atención a los especiales',text:'Algunos números dan tiempo, monedas o rellenan otros huecos. Pasa el ratón por el número para ver su efecto, o pulsa la i si juegas en móvil.'},
         {target:'timeUI',title:'El tiempo es limitado',text:'El reloj corre mientras juegas. Encadena colocaciones para aumentar tu multiplicador y consigue monedas para las mejoras de la tienda.'},
+        {target:'board',title:'Casillas con reglas',text:'A partir del segundo piso verás casillas con símbolos: algunas dan monedas, otras se desbloquean, exigen rapidez o permiten mover números. Puedes consultar sus reglas en la guía.'},
         {target:'board',title:'Ahora te toca',text:'Coloca tu número en uno de los huecos verdes. Al completar todas las casillas llegarás a una tienda: también te enseñaremos a usarla.'}
       ],
       shop:[
@@ -526,7 +541,7 @@
     };
     let musicScene=null;
     function desiredMusicScene(){
-      return state.phase==='menu'?'menu':state.phase==='playing'?'playing':state.phase==='shop'?'shop':null;
+      return state.phase==='menu'?'menu':state.phase==='playing'?'playing':['shop','route'].includes(state.phase)?'shop':null;
     }
     function scheduleMusic(){
       if(!audioCtx||!musicTimer||!audioSettings.music||!musicScene)return;
@@ -661,7 +676,7 @@
     function setStatus(msg){$('statusUI').textContent=msg;}
     function showOverlay(name){
       if(name)hideBombPopup();
-      for(const n of ['menu','pause','shop']){
+      for(const n of ['menu','pause','shop','route']){
         const el=$(n+'Overlay');el.classList.toggle('hidden',n!==name);el.classList.toggle('flex',n===name);
       }
       updateMusicScene();
@@ -687,6 +702,98 @@
       return Math.round(count*100*streakMultiplier());
     }
     function addTime(n){state.timeLeft+=n;renderHUD();}
+    // Casillas especiales: la primera planta enseña el orden sin condiciones adicionales.
+    // Se reparte como máximo una casilla de cada tipo, nunca en un extremo si necesita vecinos.
+    function generateTiles(){
+      state.tiles=Array(state.size).fill('normal');
+      state.flexUsed=false;state.flexOrigin=null;state.urgentRemaining=null;state.urgentFailed=false;state.rewardedTiles=new Set();
+      if(state.floor===1)return;
+      const wanted=[];
+      if(state.floor>=2)wanted.push('reward');
+      if(state.floor>=3)wanted.push('sealed');
+      if(state.floor>=4)wanted.push('urgent');
+      if(state.floor>=5)wanted.push('flex');
+      // 2/3/4 especiales por dificultad, pero nunca llenar el tablero de reglas.
+      const count=Math.min(wanted.length,state.floor<=3?1:state.floor<=5?2:state.routeMode==='chaos'?4:3);
+      const introByFloor={2:'reward',3:'sealed',4:'urgent',5:'flex'};
+      // Cada mecánica se enseña garantizando su debut antes de mezclarla con otras.
+      const introduced=introByFloor[state.floor];
+      const choices=introduced?[introduced]:[];
+      const pool=wanted.filter(type=>type!==introduced).sort(()=>Math.random()-.5);
+      while(choices.length<count && pool.length)choices.push(pool.shift());
+      // En la senda caótica garantizamos al menos una casilla urgente.
+      if(state.routeMode==='chaos' && state.floor>=6 && !choices.includes('urgent'))choices[choices.length-1]='urgent';
+      for(const type of choices){
+        let eligible=state.tiles.map((t,i)=>t==='normal'&&i>0&&i<state.size-1?i:-1).filter(i=>i>=0);
+        if(type==='reward')eligible=state.tiles.map((t,i)=>t==='normal'?i:-1).filter(i=>i>=0);
+        if(eligible.length){const index=eligible[rand(0,eligible.length-1)];state.tiles[index]=type;}
+      }
+    }
+    const tileAt=i=>state.tiles[i]||'normal';
+    function isTileOpen(index){
+      if(tileAt(index)!=='sealed')return true;
+      return !!state.board[index-1]||!!state.board[index+1];
+    }
+    function legalAt(token,index,board=state.board){
+      if(!token||index<0||index>=state.size||board[index])return false;
+      if(tileAt(index)==='sealed'&&!board[index-1]&&!board[index+1]&&token.type!=='miracle')return false;
+      if(['gold','rainbow','miracle'].includes(token.type)||token.value===null)return true;
+      let low=0,high=state.max+1;
+      for(let i=index-1;i>=0;i--)if(board[i]&&typeof board[i].value==='number'){low=board[i].value;break;}
+      for(let i=index+1;i<state.size;i++)if(board[i]&&typeof board[i].value==='number'){high=board[i].value;break;}
+      return low<token.value&&token.value<high;
+    }
+    function tileBonus(index,token,element){
+      if(tileAt(index)!=='reward'||state.rewardedTiles.has(index))return;
+      state.rewardedTiles.add(index);
+      const bonus=3+(typeof token.value==='number'&&token.value%5===0?2:0);
+      addCoins(bonus,element);toast('Casilla premio: +'+bonus+' monedas');
+      particles(element,12);
+    }
+    function advanceUrgency(placedIndices){
+      const urgent=state.tiles.indexOf('urgent');
+      if(urgent<0||state.urgentFailed)return;
+      if(state.board[urgent]){state.urgentRemaining=null;return;}
+      if(state.urgentRemaining===null){
+        // No se consume un turno al activarse.
+        if(placedIndices.some(i=>Math.abs(i-urgent)===1)){
+          state.urgentRemaining=3;toast('¡Casilla urgente activa! Tienes 3 colocaciones.');
+        }
+        return;
+      }
+      state.urgentRemaining--;
+      if(state.urgentRemaining<=0){
+        state.urgentRemaining=null;state.urgentFailed=true;
+        state.timeLeft=Math.max(0,state.timeLeft-6);
+        toast('Urgente incumplida: −6 segundos',true);flash('#fb7185');
+      }
+    }
+    // La casilla flexible no puede intercambiar dos números ordinarios ya ordenados:
+    // eso rompería el orden. Permite moverlo al vacío de al lado o cambiarlo con un comodín.
+    function flexTargets(index){
+      if(state.flexUsed||state.phase!=='playing'||!state.board[index]||tileAt(index)!=='flex')return[];
+      return [index-1,index+1].filter(to=>{
+        if(to<0||to>=state.size)return false;
+        const target=state.board[to];
+        if(target&&target.value!==null)return false;
+        const copy=state.board.slice(),moving=copy[index];
+        copy[index]=target||null;copy[to]=moving;
+        if(tileAt(to)==='sealed'&&!copy[to-1]&&!copy[to+1])return false;
+        if(tileAt(index)==='sealed'&&copy[index]&&!copy[index-1]&&!copy[index+1])return false;
+        return copy.every((x,i)=>!x||x.value===null||(()=>{
+          const test=copy.slice();test[i]=null;return legalAt(x,i,test);
+        })());
+      });
+    }
+    function moveFlexible(to){
+      const from=state.flexOrigin;
+      if(from===null||!flexTargets(from).includes(to)){state.flexOrigin=null;render();return;}
+      const other=state.board[to];state.board[to]=state.board[from];state.board[from]=other||null;
+      state.flexUsed=true;state.flexOrigin=null;resetStreak();
+      // Reubicar nunca repite puntuación, dinero ni activa un efecto especial.
+      if(state.board[state.tiles.indexOf('urgent')])state.urgentRemaining=null;
+      sfx('special');toast('Casilla flexible utilizada: movimiento sin puntuación');render();checkStuck();
+    }
     function configFloor(){
       const c=FLOOR[Math.min(state.floor-1,FLOOR.length-1)];
       state.size=c.n;state.max=c.max+Math.max(0,state.floor-6)*60;
@@ -694,20 +801,15 @@
       // Las tiradas gratuitas NO se acumulan de un piso a otro. Las compradas sí.
       state.baseRerolls=c.rerolls;state.rescueUsed=false;state.eraseMode=false;state.iceLockTurns=0;state.bombsDrawnThisFloor=0;
       state.board=Array(state.size).fill(null);state.current=null;state.selected=-1;
+      if(state.routeMode==='chaos')state.timeLeft=Math.max(28,state.timeLeft-12);
+      generateTiles();
       state.streak=0;state.scoredSlots=new Set();
       render();
     }
     function validSlots(token){
       if(!token)return[];
       const result=[];
-      for(let i=0;i<state.size;i++){
-        if(state.board[i])continue;
-        if(token.type==='gold'||token.type==='rainbow'||token.type==='miracle'){result.push(i);continue;}
-        let left=0,right=state.max+1;
-        for(let j=i-1;j>=0;j--)if(state.board[j] && typeof state.board[j].value==='number'){left=state.board[j].value;break;}
-        for(let j=i+1;j<state.size;j++)if(state.board[j] && typeof state.board[j].value==='number'){right=state.board[j].value;break;}
-        if(left<token.value && token.value<right)result.push(i);
-      }
+      for(let i=0;i<state.size;i++)if(legalAt(token,i))result.push(i);
       return result;
     }
     function activeToken(){return state.selected>=0 ? state.stored[state.selected] : state.current;}
@@ -767,13 +869,16 @@
         // Leyenda: 0,1% por generación natural desde el piso 3, sin depender del trébol.
         if(state.floor>=3 && Math.random()<.001)type='miracle';
         else {
-          const rule=floorPressure(state.floor),positive=['green','blue','purple','pink','gold','rainbow'];
+          const rule=floorPressure(state.floor),positive=['green','blue','purple','pink','gold','rainbow','elastic','dilemma'];
           const hasBomb=state.bombsDrawnThisFloor>0||isBomb(state.current)||liveBombs().length>0;
           const weights=Object.entries(TYPES).filter(([id])=>id!=='miracle').map(([id,info])=>{
             let w=id==='normal'?info.weight:positive.includes(id)?info.weight*rule.specialFactor:info.weight*rule.hazardFactor;
+            if(id==='elastic'&&state.floor<2)w=0;
+            if(id==='dilemma'&&state.floor<3)w=0;
             if(id==='ice'&&state.floor<5)w=0;
             if(id==='curse'&&state.floor<4)w=0;
             if(id==='bomb'&&hasBomb)w=0;
+            if(state.routeMode==='chaos' && !positive.includes(id) && id!=='normal')w*=1.25;
             if(state.guaranteeSpecial && !positive.includes(id))w=0;
             if(positive.includes(id)&&hasJoker('clover'))w*=1.55;
             if(id==='rainbow'&&hasJoker('prism'))w+=7*rule.specialFactor;
@@ -785,6 +890,8 @@
         state.guaranteeSpecial=false;
       }
       const token={type:type||'normal',value:['gold','rainbow','miracle'].includes(type)?null:rand(1,state.max)};
+      if(token.type==='elastic'){token.baseValue=token.value;token.offset=0;}
+      if(token.type==='dilemma'){let other=rand(1,state.max);for(let t=0;t<18&&Math.abs(other-token.value)<Math.max(3,Math.floor(state.max*.12));t++)other=rand(1,state.max);token.options=[token.value,other];token.choice=0;}
       if(token.type==='bomb'){
         token.fuseTotal=BOMB_FUSE(state.floor);token.fuseLeft=token.fuseTotal;
         // Una sola bomba natural por piso para evitar muertes inevitables por acumulación.
@@ -804,7 +911,7 @@
       // En los dos primeros pisos, evitamos números imposibles al generarlos.
       if(state.floor<=2){
         let tries=0;
-        const specialTypes=['green','blue','purple','pink','gold','rainbow'];
+        const specialTypes=['green','blue','purple','pink','gold','rainbow','elastic','dilemma'];
         while(validSlots(state.current).length===0 && tries++<40){
           state.current=guaranteed?createToken(specialTypes[rand(0,specialTypes.length-1)]):createToken();
         }
@@ -812,29 +919,59 @@
       }
       render();checkStuck();
     }
-    function nextFloor(){
-      if(state.phase!=='shop')return;
+    function adjustElastic(delta){
+      if(state.phase!=='playing'||state.managerOpen||tutorial.active||state.eraseMode)return;
+      const token=activeToken();if(token?.type!=='elastic')return;
+      const limitLow=Math.max(1,token.baseValue-3),limitHigh=Math.min(state.max,token.baseValue+3);
+      token.value=Math.max(limitLow,Math.min(limitHigh,token.value+delta));token.offset=token.value-token.baseValue;
+      sfx('tap');render();checkStuck();
+    }
+    function chooseDilemma(choice){
+      if(state.phase!=='playing'||state.managerOpen||tutorial.active||state.eraseMode)return;
+      const token=activeToken();if(token?.type!=='dilemma'||![0,1].includes(choice))return;
+      token.choice=choice;token.value=token.options[choice];sfx('tap');render();checkStuck();
+    }
+    function advanceFloor(){
       const upcomingFloor=state.floor+1;
       const expired=state.stored.find(t=>isBomb(t)&&t.expiresAtFloor<=upcomingFloor);
       if(expired){
         flash('#f43f5e');comboBanner('💥 ¡BOMBA OLVIDADA!');
         endRun('La bomba guardada ha caducado: debías utilizarla antes de terminar el piso '+(expired.expiresAtFloor-1)+'.');return;
       }
-      state.floor=upcomingFloor;state.phase='playing';showOverlay(null);configFloor();rollCurrent();startClock();sfx('tap');toast('🏁 Piso '+state.floor);
+      state.floor=upcomingFloor;state.phase='playing';state.routePending=false;
+      showOverlay(null);configFloor();rollCurrent();startClock();sfx('tap');toast('Piso '+state.floor+(state.routeMode==='chaos'?' · Senda caótica':''));
+    }
+    function selectRoute(choice){
+      if(state.phase!=='route'||!['safe','chaos'].includes(choice))return;
+      state.routeMode=choice;
+      addCoins(choice==='safe'?5:13);
+      sfx('buy');advanceFloor();
+    }
+    function nextFloor(){
+      if(state.phase!=='shop')return;
+      if(state.floor%5===0){
+        const expired=state.stored.find(t=>isBomb(t)&&t.expiresAtFloor<=state.floor+1);
+        if(expired){endRun('La bomba guardada ha caducado: debías utilizarla antes de terminar el piso '+(expired.expiresAtFloor-1)+'.');return;}
+        state.phase='route';state.routePending=true;
+        $('routeHeading').textContent='ELIGE EL PISO '+(state.floor+1);
+        showOverlay('route');sfx('special');return;
+      }
+      state.routeMode=null;
+      advanceFloor();
     }
     function startRun(forceTutorial=false){
       unlockAudio();stopClock();
-      if(['playing','paused','shop'].includes(state.phase))finalResult('Abandonada');
+      if(['playing','paused','shop','route'].includes(state.phase))finalResult('Abandonada');
       savePlayerName();
       state.info=false;
       state.phase='playing';state.floor=1;state.coins=0;state.stored=[];state.capacity=1;state.jokers=[];state.erasers=0;state.defusers=0;state.iceLockTurns=0;state.baseRerolls=0;state.bonusRerolls=0;state.guaranteeSpecial=false;state.shopRerolls=0;state.rescueReadyFloor=1;state.managerOpen=false;state.managerFrom=null;state.lastBreaks=[];state.brokenCount=0;state.streak=0;state.maxStreak=0;state.announcedRecord=false;state.milestones=new Set();
-      state.score=0;state.completedFloors=0;state.scoredSlots=new Set();state.resultSaved=false;state.lastResult=null;state.lastFloorAward=0;
+      state.score=0;state.completedFloors=0;state.scoredSlots=new Set();state.resultSaved=false;state.lastResult=null;state.lastFloorAward=0;state.routeMode=null;state.routePending=false;
       $('resultPanel').classList.add('hidden');
       showOverlay(null);configFloor();rollCurrent();startClock();startMusic();toast('✨ ¡Nueva partida!');
       if(forceTutorial || !tutorialSeen.game)startTutorial('game');
     }
     function endRun(reason){
-      if(!['playing','shop'].includes(state.phase))return;
+      if(!['playing','shop','route'].includes(state.phase))return;
       state.phase='over';stopClock();stopMusic();sfx(reason.toLowerCase().includes('bomba')?'bomb':'error');
       $('pauseEmoji').textContent='💀';$('pauseTitle').textContent='FIN DE PARTIDA';
       $('pauseDetail').textContent='Llegaste al piso '+state.floor+' y superaste '+state.completedFloors+' pisos. '+reason;
@@ -855,7 +992,7 @@
       unlockAudio();state.phase='playing';showOverlay(null);startClock();startMusic();render();
     }
     function backMenu(){
-      if(['playing','paused','shop'].includes(state.phase))finalResult('Abandonada');
+      if(['playing','paused','shop','route'].includes(state.phase))finalResult('Abandonada');
       state.phase='menu';stopClock();stopMusic();showOverlay('menu');render();renderRanking();
     }
     function startClock(){
@@ -883,7 +1020,7 @@
     }
     function grantForPlaced(count,fromElement){addCoins(count*(1+(hasJoker('pig')?1:0)),fromElement);}
     function legalFill(target){
-      if(target<0||target>=state.size||state.board[target])return false;
+      if(target<0||target>=state.size||state.board[target]||!isTileOpen(target))return false;
       let low=1,high=state.max;
       for(let i=target-1;i>=0;i--)if(state.board[i]&&typeof state.board[i].value==='number'){low=state.board[i].value+1;break;}
       for(let i=target+1;i<state.size;i++)if(state.board[i]&&typeof state.board[i].value==='number'){high=state.board[i].value-1;break;}
@@ -892,7 +1029,18 @@
       return true;
     }
     function place(index){
-      if(state.phase!=='playing'||state.managerOpen)return;
+      if(state.phase!=='playing'||state.managerOpen||tutorial.active||state.info)return;
+      if(state.flexOrigin!==null){
+        if(index===state.flexOrigin){state.flexOrigin=null;render();return;}
+        if(flexTargets(state.flexOrigin).includes(index)){moveFlexible(index);return;}
+        state.flexOrigin=null;render();toast('Movimiento cancelado');return;
+      }
+      if(!state.eraseMode&&tileAt(index)==='flex'&&state.board[index]&&!state.flexUsed){
+        const targets=flexTargets(index);
+        if(targets.length){state.flexOrigin=index;sfx('tap');render();toast('Elige un hueco vecino iluminado para mover el número');}
+        else toast('La casilla flexible necesita un vecino vacío o un comodín',true);
+        return;
+      }
       if(state.eraseMode){
         if(!state.board[index]){sfx('error');return;}
         state.board[index]=null;state.erasers--;state.eraseMode=false;resetStreak();
@@ -931,6 +1079,10 @@
         extra=extraIndices.length;message='🌟 ¡MILAGRO! ¡TABLERO COMPLETO!';
         flash('#e879f9');comboBanner('🌟 ¡MILAGRO LEGENDARIO!');sfx('miracle');particles($('board'),65);
       }
+      // Primero se resuelven los efectos; una casilla sellada se abre si su vecina se llena.
+      const newlyFilled=[index,...extraIndices];
+      newlyFilled.forEach(i=>tileBonus(i,state.board[i],document.querySelector('[data-board-index="'+i+'"]')||element));
+      advanceUrgency(newlyFilled);
       // Puntuar casillas nuevas; la goma no sirve para repetir puntos.
       // La racha recompensa decidir rápido sin usar guardar/dados/borrador.
       state.streak++;state.maxStreak=Math.max(state.maxStreak,state.streak);
@@ -949,7 +1101,7 @@
       if(state.iceLockTurns>0)state.iceLockTurns--;
       sfx(token.type==='normal'?'tap':'special');particles(element,extra?22:10);
       setStatus(message);toast(message);render();animate(document.querySelector('[data-board-index="'+index+'"]'));
-      if(state.timeLeft<=0){endRun('La maldición consumió tus últimos segundos.');return;}
+      if(state.timeLeft<=0){endRun('Los efectos del piso consumieron tus últimos segundos.');return;}
       if(state.board.every(Boolean)){floorClear();return;}
       if(state.current===null)rollCurrent();else {render();checkStuck();}
     }
@@ -958,6 +1110,7 @@
       if(state.selected>=0){if(!validSlots(activeToken()).length)setStatus('↩️ No encaja el guardado: tócalo otra vez para volver al número de mano.');return;}
       const bombInHand=isBomb(state.current);
       const possible=validSlots(state.current).length>0 || (state.iceLockTurns===0&&!bombInHand&&state.stored.some(t=>validSlots(t).length>0));
+      if(!state.flexUsed && state.board.some((x,i)=>x&&tileAt(i)==='flex'&&flexTargets(i).length))return;
       if(possible)return;
       if(state.stored.length<state.capacity&&state.iceLockTurns===0){setStatus(bombInHand?'💣 Guarda la bomba antes de que explote.':'📦 No encaja: guárdalo o utiliza otro.');return;}
       if(currentRerolls()>0&&!bombInHand){setStatus('🎲 Ninguno encaja: utiliza un reroll.');return;}
@@ -975,7 +1128,7 @@
       endRun('No quedan movimientos, guardados útiles ni objetos de rescate.');
     }
     function store(){
-      if(state.phase!=='playing'||state.managerOpen||!state.current||state.selected>=0||state.stored.length>=state.capacity||state.eraseMode||state.iceLockTurns>0)return;
+      if(state.phase!=='playing'||state.managerOpen||state.flexOrigin!==null||!state.current||state.selected>=0||state.stored.length>=state.capacity||state.eraseMode||state.iceLockTurns>0)return;
       const cost=floorPressure(state.floor).saveCost;
       if(cost&&!spendTime(cost,'Guardar'))return;
       if(isBomb(state.current)){
@@ -987,19 +1140,19 @@
       sfx('store');rollCurrent();
     }
     function selectStored(i){
-      if(state.phase!=='playing'||state.managerOpen||!state.stored[i]||state.eraseMode||state.iceLockTurns>0)return;
+      if(state.phase!=='playing'||state.managerOpen||state.flexOrigin!==null||!state.stored[i]||state.eraseMode||state.iceLockTurns>0)return;
       if(isBomb(state.current)&&state.selected<0){toast('💣 La bomba activa no permite cambiar de número. Colócala o guárdala.',true);return;}
       state.selected=state.selected===i?-1:i;sfx('tap');render();checkStuck();
     }
     function reroll(){
-      if(state.phase!=='playing'||state.managerOpen||currentRerolls()<=0||state.eraseMode||isBomb(activeToken()))return;
-      if(state.baseRerolls>0)state.baseRerolls--;else state.bonusRerolls--;state.selected=-1;state.current=null;resetStreak();
+      if(state.phase!=='playing'||state.managerOpen||state.flexOrigin!==null||currentRerolls()<=0||state.eraseMode||isBomb(activeToken()))return;
       const cost=floorPressure(state.floor).rerollCost;if(cost&&!spendTime(cost,'Reroll'))return;
+      if(state.baseRerolls>0)state.baseRerolls--;else state.bonusRerolls--;state.selected=-1;state.current=null;resetStreak();
       sfx('store');toast('🎲 ¡Nuevo número!');rollCurrent();
     }
     function toggleErase(){
       if(state.phase!=='playing'||state.managerOpen||state.erasers<=0)return;
-      state.eraseMode=!state.eraseMode;state.selected=-1;sfx('tap');render();
+      state.eraseMode=!state.eraseMode;state.flexOrigin=null;state.selected=-1;sfx('tap');render();
       if(state.eraseMode)toast('🧽 Toca una casilla ocupada');
     }
     function useDefuser(){
@@ -1113,7 +1266,12 @@
       if(offer.kind==='joker'){state.jokers.push(offer.id);if(offer.id==='lifebuoy')state.rescueReadyFloor=Math.min(state.rescueReadyFloor,state.floor+1);}
       else if(offer.kind==='token'){
         const next=FLOOR[Math.min(state.floor,FLOOR.length-1)].max+Math.max(0,state.floor-5)*60;
-        const token=createToken(offer.token);if(token.value!==null)token.value=rand(1,next);
+        const token=createToken(offer.token);
+        if(token.value!==null){
+          token.value=rand(1,next);
+          if(token.type==='elastic'){token.baseValue=token.value;token.offset=0;}
+          if(token.type==='dilemma'){let other=rand(1,next);if(next>1&&other===token.value)other=other%next+1;token.options=[token.value,other];token.choice=0;}
+        }
         state.stored.push(token);
       }
       else if(offer.action==='rerolls')state.bonusRerolls+=2;
@@ -1150,7 +1308,7 @@
       $('filledUI').textContent=state.board.filter(Boolean).length+'/'+state.size;
       $('scoreUI').textContent=fmtPoints(state.score);
       const pressure=floorPressure(state.floor);
-      $('dangerUI').textContent=state.floor<=4?'🌱 Dificultad progresiva':
+      $('dangerUI').textContent=state.routeMode==='chaos'?'SENDA CAÓTICA · −12s, más peligros':state.routeMode==='safe'?'SENDA SEGURA · +5 monedas':state.floor<=4?'🌱 Dificultad progresiva':
         '☠️ Guardar −'+pressure.saveCost+'s · Dados −'+pressure.rerollCost+'s';
       $('streakUI').textContent=state.iceLockTurns>0?'🧊 Guardados bloqueados: '+state.iceLockTurns+' turno(s)':'🔥 Racha '+state.streak+' · x'+streakMultiplier().toFixed(2);
       updateBombHUD();
@@ -1163,34 +1321,57 @@
     }
     function renderBoard(){
       const root=$('board');root.replaceChildren();
-      const token=activeToken(),valid=state.phase==='playing'&&!state.eraseMode?validSlots(token):[];
+      const token=activeToken(),valid=state.phase==='playing'&&!state.eraseMode&&state.flexOrigin===null?validSlots(token):[];
+      const flexibleTargets=state.flexOrigin!==null?flexTargets(state.flexOrigin):[];
+      const colors={reward:'reward',sealed:'sealed',urgent:'urgent',flex:'flex'};
       for(let i=0;i<state.size;i++){
-        const cell=state.board[i],ok=valid.includes(i),erase=state.eraseMode&&!!cell;
+        const cell=state.board[i],kindTile=tileAt(i),tileName={normal:'',reward:'PREMIO',sealed:'SELLADA',urgent:'URGENTE',flex:'FLEXIBLE'}[kindTile];
+        const ok=valid.includes(i),erase=state.eraseMode&&!!cell,flexTarget=flexibleTargets.includes(i);
         const b=document.createElement('button');b.type='button';b.dataset.boardIndex=i;
         const kind=erase?'is-erasable':cell?'is-filled':ok?'is-valid':'is-blocked';
-        b.className='board-slot relative w-full rounded-lg border active:scale-[.985] '+kind+' '+(ok?'slot-available ':'')+(cell?.type==='miracle'?'rare-glow ':'');
+        b.className='board-slot relative w-full rounded-lg border active:scale-[.985] '+kind+' '+(ok?'slot-available ':'')+(cell?.type==='miracle'?'rare-glow ':'')+(kindTile!=='normal'?' tile-'+colors[kindTile]:'')+(flexTarget?' is-flex-target':'')+(state.flexOrigin===i?' flex-selected':'');
         const index=document.createElement('span');index.className='board-slot__index';index.textContent=pos(i);
         const num=document.createElement('span');num.className='board-slot__number';num.textContent=cell?(cell.value===null?'★':cell.value):'—';
         const right=document.createElement('span');right.className='board-slot__status';
+        const tag=document.createElement('span');tag.className='board-slot__tile-tag';
+        if(kindTile!=='normal'){
+          const icons={reward:'coin',sealed:'lock',urgent:'clock',flex:'elastic'};
+          tag.append(makeGlyph(icons[kindTile]),document.createTextNode(tileName));
+          if(kindTile==='urgent'&&!cell && state.urgentRemaining!==null)tag.append(document.createTextNode(' '+state.urgentRemaining));
+          if(kindTile==='urgent'&&state.urgentFailed)tag.append(document.createTextNode(' · FIN'));
+          if(kindTile==='flex'&&state.flexUsed)tag.append(document.createTextNode(' · USADA'));
+        }
         let name,text;
-        if(erase){name='Borrar casilla '+pos(i);text='Pulsa para liberar esta casilla. No recuperas los puntos que ya habías ganado.';right.textContent='BORRAR';}
+        if(flexTarget){right.textContent='MOVER AQUÍ';name='Destino de reubicación';text='Mueve el número aquí sin alterar el orden. No ganas monedas ni puntos por moverlo.';}
+        else if(state.flexOrigin===i){right.textContent='CANCELAR';name='Cancelar traslado';text='Pulsa aquí para cancelar la reubicación.';}
+        else if(erase){right.textContent='BORRAR';name='Borrar casilla '+pos(i);text='Pulsa para liberar esta casilla. No recuperas los puntos que ya habías ganado.';}
         else if(cell){
           const type=cell.type==='auto'?'auto':cell.type;
           const typeName=TYPES[type]?.name || 'Automático';
           const icon=cell.type==='auto'?'sparkle':GLYPH_MAP[TYPES[type]?.icon]||'digits';
-          right.append(makeGlyph(icon),document.createTextNode(typeName));
+          right.append(makeGlyph(icon),document.createTextNode(kindTile==='flex'&&!state.flexUsed?'MOVER':'OCUPADA'));
           name='Casilla '+pos(i)+' · '+(cell.value===null?'comodín':cell.value);
-          text=TYPE_HELP[type]||'Este hueco ya está ocupado.';
+          text=(TYPE_HELP[type]||'Este hueco ya está ocupado.')+(kindTile!=='normal'?' '+TILE_HELP[kindTile]:'');
+        }else if(kindTile==='sealed'&&!isTileOpen(i)){
+          right.textContent='BLOQUEADA';name='Casilla '+pos(i)+' · sellada';text=TILE_HELP.sealed;
         }else if(ok){right.textContent='VÁLIDO';name='Casilla '+pos(i)+' · disponible';
-          const bounds=slotBounds(i);
-          text='Puedes colocar aquí '+(token.value===null?'este comodín':'el '+token.value)+'. '+(token.value!==null?'Debe estar entre '+bounds.low+' y '+bounds.high+'.':'No altera los límites de orden.');
+          const bounds=slotBounds(i);text='Puedes colocar aquí '+(token.value===null?'este comodín':'el '+token.value)+'. '+(token.value!==null?'Debe estar entre '+bounds.low+' y '+bounds.high+'.':'No altera los límites de orden.');
+          if(kindTile!=='normal')text+=' '+TILE_HELP[kindTile];
         }else{right.textContent='SIN HUECO';name='Casilla '+pos(i)+' · no disponible';
-          text=state.phase!=='playing'?'Comienza una partida para colocar números.':!token?'No hay ningún número en mano.':'Aquí no encaja tu número. Solo puedes usar casillas verdes para mantener el orden.';
+          text=state.phase!=='playing'?'Comienza una partida para colocar números.':!token?'No hay ningún número en mano.':'Aquí no encaja tu número. Elige un hueco verde para mantener el orden.';
+          if(kindTile!=='normal')text+=' '+TILE_HELP[kindTile];
         }
-        setHelp(b,name,text);
-        b.setAttribute('aria-label',name+'. '+text);
-        b.append(index,num,right);
+        setHelp(b,name,text);b.setAttribute('aria-label',name+'. '+text);
+        b.append(index,num,right);if(kindTile!=='normal')b.append(tag);
         b.addEventListener('click',()=>{unlockAudio();place(i);});root.append(b);
+      }
+      const chips=$('tileLegend');chips.replaceChildren();
+      const present=[...new Set(state.tiles.filter(t=>t!=='normal'))];
+      chips.classList.toggle('hidden',present.length===0);
+      for(const type of present){const legend=document.createElement('span');legend.className='tile-legend-chip tile-'+type;
+        legend.textContent={reward:'Premio +3/+5',sealed:'Sellada',urgent:'Urgente −6s',flex:'Mover 1 vez'}[type];
+        setHelp(legend,{reward:'Casilla premio',sealed:'Casilla sellada',urgent:'Casilla urgente',flex:'Casilla flexible'}[type],TILE_HELP[type]);
+        chips.append(legend);
       }
     }
     function renderStorage(){
@@ -1231,13 +1412,27 @@
       $('kindUI').className='text-xs font-semibold leading-snug '+(active?TYPES[active.type].color:'text-slate-300');
       const description=active?TYPE_HELP[active.type]:'Cada número tiene su lugar.';
       $('currentDescription').textContent=description;
+      const canUsePower=state.phase==='playing'&&!state.managerOpen&&!state.eraseMode;
+      $('tokenPowerPanel').classList.toggle('hidden',!active||!['elastic','dilemma'].includes(active.type));
+      $('elasticControls').classList.toggle('hidden',active?.type!=='elastic');
+      $('dilemmaControls').classList.toggle('hidden',active?.type!=='dilemma');
+      if(active?.type==='elastic'){
+        $('elasticValue').textContent=String(active.value);
+        $('elasticOriginal').textContent='Original: '+active.baseValue+' · Ajuste: '+(active.offset>0?'+':'')+active.offset;
+        $('elasticMinus').disabled=!canUsePower||active.value<=Math.max(1,active.baseValue-3);
+        $('elasticPlus').disabled=!canUsePower||active.value>=Math.min(state.max,active.baseValue+3);
+        $('elasticReset').disabled=!canUsePower||active.offset===0;
+      }
+      if(active?.type==='dilemma'){
+        for(const i of [0,1]){const el=$('dilemma'+i);el.textContent=String(active.options[i]);el.disabled=!canUsePower;el.classList.toggle('is-picked',active.choice===i);el.setAttribute('aria-pressed',String(active.choice===i));}
+      }
       setHelp($('currentCard'),active?TYPES[active.type].name+(active.value===null?'':' · '+active.value):'Número en mano',description);
       setHelp($('storeButton'),'Guardar número','Guarda temporalmente el número que tienes en mano. Empiezas con un hueco de inventario; comprarás más en la tienda.');
       setHelp($('rerollButton'),'Volver a tirar','Descarta el número actual y muestra otro al azar. El número de cambios está limitado por piso.');
       setHelp($('eraserButton'),'Goma mágica','Si tienes una goma, puedes borrar una casilla ocupada para corregir tu estrategia.');
       setHelp($('defuseButton'),'Kit antibombas','Si tienes un kit, elimina una bomba activa o guardada. No da puntos por la eliminación.');
-      $('storeButton').disabled=state.phase!=='playing'||state.managerOpen||!state.current||state.selected>=0||state.stored.length>=state.capacity||state.eraseMode||state.iceLockTurns>0;
-      $('rerollButton').disabled=state.phase!=='playing'||state.managerOpen||currentRerolls()<=0||state.eraseMode||isBomb(active);
+      $('storeButton').disabled=state.phase!=='playing'||state.managerOpen||state.flexOrigin!==null||!state.current||state.selected>=0||state.stored.length>=state.capacity||state.eraseMode||state.iceLockTurns>0;
+      $('rerollButton').disabled=state.phase!=='playing'||state.managerOpen||state.flexOrigin!==null||currentRerolls()<=0||state.eraseMode||isBomb(active);
       $('rerollCount').textContent=currentRerolls();
       $('eraserButton').disabled=state.phase!=='playing'||state.managerOpen||state.erasers<=0;
       $('eraserButton').classList.toggle('ring-2',state.eraseMode);$('eraserButton').classList.toggle('ring-rose-300',state.eraseMode);
@@ -1301,6 +1496,14 @@
     $('restartButton').addEventListener('click',()=>startRun());
     $('menuButton').addEventListener('click',backMenu);
     $('nextFloorButton').addEventListener('click',nextFloor);
+    $('routeSafeButton').addEventListener('click',()=>selectRoute('safe'));
+    $('routeChaosButton').addEventListener('click',()=>selectRoute('chaos'));
+    $('routeBackButton').addEventListener('click',()=>{if(state.phase==='route'){state.phase='shop';showOverlay('shop');renderShop();}});
+    $('elasticMinus').addEventListener('click',()=>adjustElastic(-1));
+    $('elasticPlus').addEventListener('click',()=>adjustElastic(1));
+    $('elasticReset').addEventListener('click',()=>{const t=activeToken();if(t?.type==='elastic')adjustElastic(-t.offset);});
+    $('dilemma0').addEventListener('click',()=>chooseDilemma(0));
+    $('dilemma1').addEventListener('click',()=>chooseDilemma(1));
     $('shopRerollButton').addEventListener('click',()=>{unlockAudio();rerollOffers();});
     $('manageRelicsButton').addEventListener('click',openRelicManager);
     $('shopManageRelicsButton').addEventListener('click',openRelicManager);
