@@ -90,6 +90,8 @@
     <symbol id="glyph-cross" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5 19 19M19 5 5 19"/></symbol>
     <symbol id="glyph-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5 3 12l7 7M3 12h12a5 5 0 0 1 0 10"/></symbol>
     <symbol id="glyph-cool" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5 9 11 10l-1 3H7L5 9Zm14 0-6 1 1 3h3l2-4ZM10 17q2 2 4 0"/></symbol>
+    <symbol id="glyph-elastic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16M3.5 8 7 4l3.5 4M17 20V4m-3.5 12 3.5 4 3.5-4"/><path d="M10 12h4"/></symbol>
+    <symbol id="glyph-dilemma" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16m-4-4 4 4-4 4M20 16H4m4-4-4 4 4 4"/></symbol>
   </defs>
 </svg>
   <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-[70] hidden max-w-[90vw] rounded-xl border border-white/20 bg-slate-900/95 px-4 py-2 text-center text-sm font-bold shadow-2xl pointer-events-none" role="status" aria-live="polite"></div>
@@ -153,6 +155,16 @@
           <button id="rerollButton" aria-label="Cambiar el número actual" disabled class="bg-violet-500 hover:bg-violet-400 disabled:opacity-30 rounded-lg px-2.5 py-2 text-xs sm:text-sm font-black">🎲 <span id="rerollCount">2</span></button>
         </div>
       </div>
+      <section id="tokenPowerPanel" class="token-power-panel hidden" aria-live="polite">
+        <div id="elasticControls" class="hidden token-power-row">
+          <div class="token-power-title"><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-elastic"></use></svg> NÚMERO ELÁSTICO <small id="elasticOriginal">Original: —</small></div>
+          <div class="token-power-actions"><button type="button" id="elasticMinus" aria-label="Reducir número elástico en 1">−</button><strong id="elasticValue" aria-live="polite">0</strong><button type="button" id="elasticPlus" aria-label="Aumentar número elástico en 1">+</button><button type="button" id="elasticReset" class="token-reset">Reiniciar</button></div>
+        </div>
+        <div id="dilemmaControls" class="hidden token-power-row">
+          <div class="token-power-title"><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-dilemma"></use></svg> NÚMERO DILEMA <small>Elige uno · el otro se pierde</small></div>
+          <div class="dilemma-choices"><button type="button" id="dilemma0" aria-pressed="true">—</button><span>O</span><button type="button" id="dilemma1" aria-pressed="false">—</button></div>
+        </div>
+      </section>
       <div id="bombWarning" class="hidden rounded-xl border border-rose-400 bg-rose-950/70 p-2.5 mb-2 bomb-alert" role="status" aria-live="off">
         <div class="flex items-center justify-between gap-2"><strong class="text-xs sm:text-sm text-rose-100">💣 ¡BOMBA ACTIVA! Colócala o guárdala</strong><strong id="bombSeconds" class="text-xl font-black text-rose-300 tabular-nums">12.0s</strong></div>
         <div class="mt-1.5 bg-rose-950 rounded-full h-2 overflow-hidden"><div id="bombBar" class="h-full bg-gradient-to-r from-rose-500 via-orange-400 to-yellow-300 transition-[width] duration-100" style="width:100%"></div></div>
@@ -160,6 +172,7 @@
 
       <div class="flex justify-between gap-2 items-center text-[11px] text-slate-400 mb-1.5"><span class="inline-flex items-center gap-1.5"><svg class="ui-glyph text-emerald-300" aria-hidden="true"><use href="#glyph-digits"></use></svg> DE MENOR A MAYOR <span class="text-emerald-300">↓</span></span><span id="filledUI" class="font-bold text-slate-200">0/5</span></div>
       <div id="board" class="rounded-xl bg-slate-950/60 p-2 space-y-1.5" aria-label="Tablero de números ordenados"></div>
+      <div id="tileLegend" class="tile-legend hidden" aria-label="Casillas especiales de este piso"></div>
 
       <div class="mt-2.5 grid grid-cols-[1fr_auto] gap-2 items-center">
         <div class="min-w-0"><p class="text-[10px] uppercase text-slate-400 font-black tracking-wide">Números guardados <span id="storedCountUI" class="text-sky-300">0/1</span> <span id="storageLockUI" class="text-violet-300"></span></p><div id="storage" class="grid grid-cols-3 gap-1.5 mt-1"></div></div>
@@ -180,7 +193,7 @@
     <div class="rule-example" aria-label="Ejemplo de orden correcto: 7, 13, 28"><span>07</span><b>‹</b><span>13</span><b>‹</b><span>28</span></div>
     <div><strong>Coloca de menor a mayor.</strong><p>Los huecos iluminados en verde son los que aceptan tu número. Completa todos para subir de piso.</p></div>
   </div>
-  <div class="guide-section-title"><span>NÚMEROS Y EFECTOS</span><span>11 tipos</span></div>
+  <div class="guide-section-title"><span>NÚMEROS Y EFECTOS</span><span>13 tipos</span></div>
   <div class="legend-grid">
 <div class="legend-card tone-normal" data-help-title="Normal" data-help-text="Número corriente. Busca una casilla donde encaje.">
           <span class="legend-icon"><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-digits"></use></svg></span>
@@ -222,10 +235,26 @@
           <span class="legend-icon"><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-ice"></use></svg></span>
           <span class="legend-copy"><strong>Hielo</strong><small>Impide usar guardados durante dos colocaciones.</small></span>
         </div>
+<div class="legend-card tone-elastic" data-help-title="Elástico" data-help-text="Ajusta el valor entre −3 y +3 antes de colocarlo; el orden siempre se respeta.">
+          <span class="legend-icon"><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-elastic"></use></svg></span>
+          <span class="legend-copy"><strong>Elástico ±3</strong><small>Sube o baja hasta 3 unidades antes de colocarlo.</small></span>
+        </div>
+<div class="legend-card tone-dilemma" data-help-title="Dilema" data-help-text="Escoge uno de los dos valores. El otro desaparece al colocar.">
+          <span class="legend-icon"><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-dilemma"></use></svg></span>
+          <span class="legend-copy"><strong>Dilema</strong><small>Elige entre dos valores al azar.</small></span>
+        </div>
 <div class="legend-card tone-miracle" data-help-title="Milagro" data-help-text="Completa el tablero; es extremadamente raro.">
           <span class="legend-icon"><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-miracle"></use></svg></span>
           <span class="legend-copy"><strong>Milagro</strong><small>Completa el tablero; es extremadamente raro.</small></span>
         </div>  </div>
+  <div class="guide-section-title"><span>CASILLAS Y CAMINOS</span><span>4 casillas · 2 rutas</span></div>
+  <div class="tile-guide-grid">
+    <article class="tile-guide-card tile-reward"><strong><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-coin"></use></svg> Premio</strong><p>+3 monedas al rellenar; +2 extra si el número termina en 0 o 5.</p></article>
+    <article class="tile-guide-card tile-sealed"><strong><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-lock"></use></svg> Sellada</strong><p>Se abre cuando una casilla vecina queda ocupada. No gasta turnos.</p></article>
+    <article class="tile-guide-card tile-urgent"><strong><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-clock"></use></svg> Urgente</strong><p>Tras rellenar una vecina, dispones de 3 colocaciones. Si fallas: −6 segundos.</p></article>
+    <article class="tile-guide-card tile-flex"><strong><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-elastic"></use></svg> Flexible</strong><p>Una vez por piso, mueve su número al hueco vecino o intercámbialo con un comodín si queda en orden.</p></article>
+  </div>
+  <div class="route-guide">Cada <strong>5 pisos</strong> eliges camino: <strong>Seguro</strong> (+5 monedas) o <strong>Caótico</strong> (+13 monedas, −12 segundos y 25% más peso de peligros durante el siguiente piso). La elección dura un solo piso.</div>
   <details class="rule-accordion">
     <summary>Inventario, tienda y reliquias <svg class="ui-glyph" aria-hidden="true"><use href="#glyph-box"></use></svg></summary>
     <div class="rule-detail"><p><strong>Guardar:</strong> empiezas con un hueco. Compra los otros dos en la tienda por 8 y 14 monedas. Toca un guardado para recuperarlo.</p><p><strong>Tienda:</strong> aparece al completar cada piso. Puedes comprar mejoras, consumibles y reliquias con monedas.</p><p><strong>Reliquias:</strong> caben hasta cinco. Tienen una probabilidad de romperse tras cada piso; puedes venderlas para liberar espacio.</p><p><strong>Bombas guardadas:</strong> la mecha se pausa, pero deben utilizarse antes de superar los dos pisos siguientes al del guardado.</p></div>
@@ -307,6 +336,26 @@
       <div class="grid grid-cols-2 gap-2 mt-3"><button id="shopRerollButton" class="rounded-xl border border-violet-400/40 bg-violet-900/60 hover:bg-violet-800/60 disabled:opacity-40 py-2.5 text-xs sm:text-sm font-black">🔄 Ofertas · 2 🪙</button><button id="nextFloorButton" class="rounded-xl bg-yellow-300 hover:bg-yellow-200 py-2.5 text-slate-950 font-black text-xs sm:text-sm">SIGUIENTE PISO →</button></div>
       <p id="shopNote" class="text-xs text-center mt-2 text-slate-400">Puedes comprar varias ofertas antes de continuar.</p>
     </div>
+  </div>
+
+  <!-- Bifurcación después de cada quinto piso. El reloj está parado. -->
+  <div id="routeOverlay" class="hidden fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md items-center justify-center p-3" role="dialog" aria-modal="true" aria-labelledby="routeHeading">
+    <section class="route-panel">
+      <p class="eyebrow">LA SUERTE TAMBIÉN SE ELIGE</p>
+      <h2 id="routeHeading">ELIGE TU CAMINO</h2>
+      <p class="route-intro">Cada cinco pisos puedes decidir cuánto arriesgar. El efecto solo dura el próximo piso.</p>
+      <div class="route-grid">
+        <button id="routeSafeButton" class="route-choice route-safe" type="button">
+          <span class="route-choice-icon"><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-life"></use></svg></span>
+          <strong>CAMINO SEGURO</strong><span class="route-choice-reward">+5 monedas</span><span>Tiempo y peligros normales.</span><span class="route-choose">ELEGIR SEGURO</span>
+        </button>
+        <button id="routeChaosButton" class="route-choice route-chaos" type="button">
+          <span class="route-choice-icon"><svg class="ui-glyph" aria-hidden="true"><use href="#glyph-burst"></use></svg></span>
+          <strong>CAMINO CAÓTICO</strong><span class="route-choice-reward">+13 monedas</span><span>−12 segundos y 25% más peso de peligros.</span><span class="route-choose">ARRIESGAR</span>
+        </button>
+      </div>
+      <button id="routeBackButton" class="route-back" type="button">Volver a la tienda</button>
+    </section>
   </div>
 
   <!-- Inventario de reliquias, sobre el juego y la tienda -->
